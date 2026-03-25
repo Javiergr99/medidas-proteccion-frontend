@@ -40,12 +40,15 @@ Su propósito es facilitar el acceso, consulta y gestión de información dentro
 ### 🌐 Frontend
 
 <p>
-  <img src="https://skillicons.dev/icons?i=html,css,js,bootstrap,tailwind,react,vite&theme=dark" />
+  <img src="https://skillicons.dev/icons?i=html,css,js,react,vite,tailwind&theme=dark" height="62" />
 </p>
 
 - **HTML5 · CSS3 · JavaScript (ES6+)**
 - **React · Vite**
-- **Bootstrap 5 · Tailwind CSS**
+- **Tailwind CSS**
+- **Material UI (MUI)**
+- **Axios**
+- **Notistack**
 - Responsive Design · Accessibility (a11y)
 
 ---
@@ -53,13 +56,14 @@ Su propósito es facilitar el acceso, consulta y gestión de información dentro
 ### ⚙️ Backend / Integración
 
 <p>
-  <img src="https://skillicons.dev/icons?i=python,fastapi,mysql&theme=dark" />
+  <img src="https://skillicons.dev/icons?i=python,fastapi,postgres&theme=dark" height="62" />
 </p>
 
+- **Python**
 - **FastAPI**
-- **MySQL**
-- **Consumo de API con Axios**
-- **Autenticación con JWT**
+- **PostgreSQL**
+- **JWT Authentication**
+- **REST API Integration**
 
 ---
 
@@ -68,7 +72,8 @@ Su propósito es facilitar el acceso, consulta y gestión de información dentro
 - Diseño institucional moderno
 - Componentes reutilizables
 - Interfaz responsiva
-- Mejora continua de experiencia de usuario
+- Arquitectura modular escalable
+- Experiencia de usuario enfocada en claridad visual
 
 ---
 
@@ -78,6 +83,7 @@ Su propósito es facilitar el acceso, consulta y gestión de información dentro
 - Manejo de sesión autenticada
 - Variables de entorno
 - Integración de Cloudflare Turnstile
+  
 ---
 
 ## 🎯 Objetivo del proyecto
