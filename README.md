@@ -35,22 +35,49 @@ Su propósito es facilitar el acceso, consulta y gestión de información dentro
 
 ---
 
-## 🖼️ Vista previa del sistema
+## 🛠️ Tecnologías principales
 
-> Aquí puedes colocar tus capturas reales del sistema dentro de una carpeta como `docs/preview/`.
+### 🌐 Frontend
 
-<div align="center">
+<p>
+  <img src="https://skillicons.dev/icons?i=html,css,js,bootstrap,tailwind,react,vite&theme=dark" />
+</p>
 
-| Login | Vista principal |
-|------|------|
-| ![Login](./docs/preview/login.png) | ![Dashboard](./docs/preview/dashboard.png) |
+- **HTML5 · CSS3 · JavaScript (ES6+)**
+- **React · Vite**
+- **Bootstrap 5 · Tailwind CSS**
+- Responsive Design · Accessibility (a11y)
 
-| Registros | Perfil / módulos |
-|------|------|
-| ![Registros](./docs/preview/registros.png) | ![Perfil](./docs/preview/perfil.png) |
+---
 
-</div>
+### ⚙️ Backend / Integración
 
+<p>
+  <img src="https://skillicons.dev/icons?i=python,fastapi,mysql&theme=dark" />
+</p>
+
+- **FastAPI**
+- **MySQL**
+- **Consumo de API con Axios**
+- **Autenticación con JWT**
+
+---
+
+### 🎨 UI / Experiencia
+
+- Diseño institucional moderno
+- Componentes reutilizables
+- Interfaz responsiva
+- Mejora continua de experiencia de usuario
+
+---
+
+### 🔐 Seguridad
+
+- Protección de rutas privadas
+- Manejo de sesión autenticada
+- Variables de entorno
+- Integración de Cloudflare Turnstile
 ---
 
 ## 🎯 Objetivo del proyecto
