@@ -1,50 +1,104 @@
-# Frontend – Registro de Medidas de Protección
+<div align="center">
 
-Frontend del sistema **Registro de Medidas de Protección**, desarrollado para ofrecer una interfaz moderna, institucional, responsiva y segura, alineada con la identidad visual de gobierno y orientada a una mejor experiencia de usuario.
+# 🛡️ Registro de Medidas de Protección
+### Frontend institucional moderno, responsivo y seguro
 
----
+<p>
+  <img src="https://img.shields.io/badge/Estado-En%20desarrollo-0a7ea4?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Frontend-React%20%2B%20Vite-7c3aed?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/UI-MUI%20%2B%20Tailwind-0f766e?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Auth-JWT%20%2B%20Turnstile-b91c1c?style=for-the-badge" />
+</p>
 
-## Descripción
+<p>
+  Interfaz web desarrollada con enfoque institucional, experiencia moderna de usuario, 
+  autenticación segura y arquitectura escalable para el sistema de 
+  <strong>Registro de Medidas de Protección</strong>.
+</p>
 
-Este proyecto corresponde al frontend del sistema de **Registro de Medidas de Protección**, cuyo objetivo es facilitar el acceso, consulta y gestión de información dentro de la plataforma, mediante una interfaz clara, actualizada y funcional.
-
-El desarrollo está enfocado en:
-
-- ofrecer una experiencia visual moderna e institucional
-- garantizar una navegación clara y responsiva
-- integrar autenticación segura con backend
-- estructurar el sistema de manera escalable para futuras mejoras
-
----
-
-## Características principales
-
-- Inicio de sesión conectado a backend real
-- Manejo de autenticación con JWT
-- Protección de rutas privadas
-- Interfaz responsiva para escritorio y móvil
-- Diseño institucional con enfoque moderno
-- Integración de componentes reutilizables
-- Validación visual en flujo de acceso
-- Integración de Cloudflare Turnstile en login
-- Base preparada para escalabilidad por módulos
+</div>
 
 ---
 
-## Tecnologías utilizadas
+## ✨ Vista general
 
-- **React**
-- **Vite**
-- **JavaScript / JSX**
-- **Material UI (MUI)**
-- **Tailwind CSS**
-- **Axios**
-- **Notistack**
-- **Font Awesome**
+Este proyecto corresponde al **frontend del sistema Registro de Medidas de Protección**, diseñado para ofrecer una experiencia:
+
+- institucional
+- moderna
+- clara
+- responsiva
+- segura
+- escalable
+
+Su propósito es facilitar el acceso, consulta y gestión de información dentro de la plataforma, manteniendo una identidad visual alineada a un entorno gubernamental, pero con una ejecución más actual y amigable para el usuario.
 
 ---
 
-## Estructura general del proyecto
+## 🖼️ Vista previa del sistema
+
+> Aquí puedes colocar tus capturas reales del sistema dentro de una carpeta como `docs/preview/`.
+
+<div align="center">
+
+| Login | Vista principal |
+|------|------|
+| ![Login](./docs/preview/login.png) | ![Dashboard](./docs/preview/dashboard.png) |
+
+| Registros | Perfil / módulos |
+|------|------|
+| ![Registros](./docs/preview/registros.png) | ![Perfil](./docs/preview/perfil.png) |
+
+</div>
+
+---
+
+## 🎯 Objetivo del proyecto
+
+Construir una interfaz web robusta para el sistema de **Medidas de Protección**, enfocada en:
+
+- mejorar la experiencia visual y de navegación
+- integrar autenticación real con backend
+- proteger rutas privadas
+- ofrecer una base sólida para crecimiento modular
+- conservar una línea institucional sin perder modernidad
+
+---
+
+## 🚀 Características principales
+
+- 🔐 Inicio de sesión conectado a backend real
+- 🪪 Manejo de autenticación con JWT
+- 🛡️ Protección de rutas privadas
+- 🤖 Integración visual de Cloudflare Turnstile
+- 📱 Diseño responsivo para escritorio y móvil
+- 🧩 Componentes reutilizables
+- 🏛️ Estilo institucional con enfoque moderno
+- ⚡ Estructura preparada para escalabilidad
+- 🧼 Manejo de sesión y limpieza de credenciales
+- 🎨 Interfaz cuidada visualmente con Material UI y Tailwind CSS
+
+---
+
+## 🧱 Stack tecnológico
+
+<div align="center">
+
+| Categoría | Tecnologías |
+|---|---|
+| **Base del frontend** | React, Vite, JavaScript / JSX |
+| **UI / Estilos** | Material UI, Tailwind CSS |
+| **HTTP / API** | Axios |
+| **Notificaciones** | Notistack |
+| **Íconos** | Font Awesome |
+| **Autenticación** | JWT |
+| **Validación extra** | Cloudflare Turnstile |
+
+</div>
+
+---
+
+## 🧠 Arquitectura general
 
 ```bash
 src/
@@ -55,7 +109,7 @@ src/
 │   ├── security/
 │   └── ui/
 ├── context/
-├── pages/
+├── modules/
 ├── router/
 ├── services/
 ├── utils/
