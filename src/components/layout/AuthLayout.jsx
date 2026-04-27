@@ -45,7 +45,3 @@ export default function AuthLayout({ children }) {
 AuthLayout.propTypes = {
   children: PropTypes.node.isRequired,
 };
-
-AuthLayout.propTypes = {
-  children: PropTypes.node.isRequired,
-};

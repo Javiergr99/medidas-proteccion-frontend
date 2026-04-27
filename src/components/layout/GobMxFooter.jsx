@@ -12,8 +12,8 @@ import footerTexture from "../../assets/images/footer-textura.png";
 
 export default function GobMxFooter() {
   const iconBoxSx = {
-    height: 48,
-    width: 48,
+    height: { xs: 42, sm: 46, md: 48 },
+    width: { xs: 42, sm: 46, md: 48 },
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -30,37 +30,53 @@ export default function GobMxFooter() {
   const footerLinkSx = {
     color: "rgba(255,255,255,0.92)",
     textDecoration: "none",
-    fontSize: "15px",
+    fontSize: { xs: "14px", md: "15px" },
     lineHeight: 1.8,
     "&:hover": {
       textDecoration: "underline",
     },
   };
 
+  const sectionTitleSx = {
+    fontFamily: '"Noto Sans", sans-serif',
+    fontWeight: 800,
+    fontSize: { xs: "1.02rem", md: "1.1rem" },
+    lineHeight: 1.1,
+    color: "#ffffff",
+  };
+
   return (
     <Box component="footer" sx={{ mt: "auto", backgroundColor: "#611232" }}>
-      <Container maxWidth="lg" sx={{ py: { xs: 6, md: 8 } }}>
+      <Container
+        maxWidth={false}
+        sx={{
+          maxWidth: "1240px",
+          mx: "auto",
+          px: { xs: 2, sm: 3, md: 5, lg: "72px" },
+          py: { xs: 5, sm: 5.5, md: 7 },
+        }}
+      >
         <Box
           sx={{
             display: "grid",
             gridTemplateColumns: {
               xs: "1fr",
-              md: "1fr 1fr",
-              lg: "1.1fr 1fr 1fr 1fr",
+              sm: "1fr 1fr",
+              lg: "1.05fr 1fr 1fr 1fr",
             },
-            gap: { xs: 5, md: 6, lg: 8 },
+            gap: { xs: 4, sm: 4.5, md: 5.5, lg: 6 },
             alignItems: "start",
             color: "#ffffff",
           }}
         >
           {/* COLUMNA 1 */}
-          <Box>
+          <Box sx={{ pr: { lg: 2 } }}>
             <Box
               component="img"
               src={gobLogo}
               alt="Gobierno de México"
               sx={{
-                height: { xs: 72, md: 92 },
+                height: { xs: 62, sm: 70, md: 88 },
                 width: "auto",
                 display: "block",
               }}
@@ -69,21 +85,24 @@ export default function GobMxFooter() {
 
           {/* COLUMNA 2 */}
           <Box>
-            <Box sx={{ minHeight: 34, display: "flex", alignItems: "flex-start" }}>
-              <Typography
-                sx={{
-                  fontFamily: "Noto Sans, sans-serif",
-                  fontWeight: 800,
-                  fontSize: "1.1rem",
-                  lineHeight: 1.1,
-                  color: "#ffffff",
-                }}
-              >
-                Enlaces
-              </Typography>
+            <Box
+              sx={{
+                minHeight: { xs: "auto", lg: 34 },
+                display: "flex",
+                alignItems: "flex-start",
+              }}
+            >
+              <Typography sx={sectionTitleSx}>Enlaces</Typography>
             </Box>
 
-            <Box sx={{ pt: "18px", display: "flex", flexDirection: "column", gap: 0.75 }}>
+            <Box
+              sx={{
+                pt: { xs: 1.4, md: "18px" },
+                display: "flex",
+                flexDirection: "column",
+                gap: 0.75,
+              }}
+            >
               <Link href="https://www.gob.mx/datos" target="_blank" rel="noreferrer" sx={footerLinkSx}>
                 Datos
               </Link>
@@ -107,24 +126,20 @@ export default function GobMxFooter() {
 
           {/* COLUMNA 3 */}
           <Box>
-            <Box sx={{ minHeight: 34, display: "flex", alignItems: "flex-start" }}>
-              <Typography
-                sx={{
-                  fontFamily: "Noto Sans, sans-serif",
-                  fontWeight: 800,
-                  fontSize: "1.1rem",
-                  lineHeight: 1.1,
-                  color: "#ffffff",
-                }}
-              >
-                ¿Qué es gob.mx?
-              </Typography>
+            <Box
+              sx={{
+                minHeight: { xs: "auto", lg: 34 },
+                display: "flex",
+                alignItems: "flex-start",
+              }}
+            >
+              <Typography sx={sectionTitleSx}>¿Qué es gob.mx?</Typography>
             </Box>
 
-            <Box sx={{ pt: "18px" }}>
+            <Box sx={{ pt: { xs: 1.4, md: "18px" } }}>
               <Typography
                 sx={{
-                  fontSize: "15px",
+                  fontSize: { xs: "14px", md: "15px" },
                   lineHeight: 1.8,
                   color: "rgba(255,255,255,0.92)",
                 }}
@@ -144,7 +159,14 @@ export default function GobMxFooter() {
                 </Link>
               </Typography>
 
-              <Box sx={{ mt: "18px", display: "flex", flexDirection: "column", gap: 0.75 }}>
+              <Box
+                sx={{
+                  mt: { xs: 1.4, md: "18px" },
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 0.75,
+                }}
+              >
                 <Link
                   href="https://www.gob.mx/accesibilidad"
                   target="_blank"
@@ -167,26 +189,23 @@ export default function GobMxFooter() {
 
           {/* COLUMNA 4 */}
           <Box>
-            <Box sx={{ minHeight: 34, display: "flex", alignItems: "flex-start" }}>
-              <Typography
-                sx={{
-                  fontFamily: "Noto Sans, sans-serif",
-                  fontWeight: 800,
-                  fontSize: "1.1rem",
-                  lineHeight: 1.1,
-                  color: "#ffffff",
-                }}
-              >
-                Contacto
-              </Typography>
+            <Box
+              sx={{
+                minHeight: { xs: "auto", lg: 34 },
+                display: "flex",
+                alignItems: "flex-start",
+              }}
+            >
+              <Typography sx={sectionTitleSx}>Contacto</Typography>
             </Box>
 
-            <Box sx={{ pt: "18px" }}>
+            <Box sx={{ pt: { xs: 1.4, md: "18px" } }}>
               <Typography
                 sx={{
-                  fontSize: "15px",
+                  fontSize: { xs: "14px", md: "15px" },
                   lineHeight: 1.8,
                   color: "rgba(255,255,255,0.92)",
+                  wordBreak: "break-word",
                 }}
               >
                 Dudas e información a:
@@ -196,19 +215,17 @@ export default function GobMxFooter() {
                 </Box>
               </Typography>
 
-              <Box sx={{ mt: "18px" }}>
-                <Typography
+              <Box sx={{ mt: { xs: 2, md: "18px" } }}>
+                <Typography sx={sectionTitleSx}>Síguenos en</Typography>
+
+                <Box
                   sx={{
-                    fontFamily: "Noto Sans, sans-serif",
-                    fontWeight: 800,
-                    fontSize: "1.1rem",
-                    color: "#ffffff",
+                    mt: "10px",
+                    display: "flex",
+                    gap: { xs: 1.2, md: 2 },
+                    flexWrap: "wrap",
                   }}
                 >
-                  Síguenos en
-                </Typography>
-
-                <Box sx={{ mt: "10px", display: "flex", gap: 2 }}>
                   <Link
                     href="https://www.facebook.com/SNDIF/"
                     target="_blank"
@@ -261,7 +278,7 @@ export default function GobMxFooter() {
         alt="Textura decorativa"
         sx={{
           width: "100%",
-          height: "56px",
+          height: { xs: "42px", sm: "48px", md: "56px" },
           objectFit: "cover",
           display: "block",
         }}

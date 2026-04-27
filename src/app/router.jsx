@@ -3,12 +3,14 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import routes from "./routes";
 import ProtectedRoute from "./guards/ProtectedRoute";
 import PublicRoute from "./guards/PublicRoute";
+import PendingTwoFactorRoute from "./guards/PendingTwoFactorRoute";
 
+import HomePage from "../modules/landing/pages/HomePage";
 import LoginPage from "../modules/auth/pages/LoginPage";
 import ForgotPasswordPage from "../modules/auth/pages/ForgotPasswordPage";
+import TwoFactorPage from "../modules/auth/pages/TwoFactorPage";
 import DashboardPage from "../modules/dashboard/pages/DashboardPage";
-// Más adelante:
-// import MedidasListPage from "../modules/medidas-proteccion/pages/MedidasListPage";
+import PostLoginWelcomePage from "../modules/auth/pages/PostLoginWelcomePage";
 
 /**
  * Router principal de la aplicación.
@@ -18,20 +20,22 @@ export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Rutas públicas */}
+        <Route path={routes.root} element={<HomePage />} />
+
         <Route element={<PublicRoute />}>
           <Route path={routes.login} element={<LoginPage />} />
           <Route path={routes.forgotPassword} element={<ForgotPasswordPage />} />
         </Route>
 
-        {/* Rutas privadas */}
-        <Route element={<ProtectedRoute />}>
-          <Route path={routes.root} element={<Navigate to={routes.dashboard} replace />} />
-          <Route path={routes.dashboard} element={<DashboardPage />} />
-          {/* <Route path={routes.medidas} element={<MedidasListPage />} /> */}
+        <Route element={<PendingTwoFactorRoute />}>
+          <Route path={routes.twoFactor} element={<TwoFactorPage />} />
         </Route>
 
-        {/* Fallback */}
+        <Route element={<ProtectedRoute />}>
+          <Route path={routes.dashboard} element={<DashboardPage />} />
+          <Route path={routes.postLoginWelcome} element={<PostLoginWelcomePage />} />
+        </Route>
+
         <Route path="*" element={<Navigate to={routes.root} replace />} />
       </Routes>
     </BrowserRouter>

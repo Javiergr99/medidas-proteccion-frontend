@@ -19,47 +19,67 @@ import loginIcon from "../../../assets/icons/login-icon.png";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEnvelope, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 
+import routes from "../../../app/routes";
+import { useAuth } from "../../../hooks/useAuth";
 import { loginRequest } from "../services/auth.service";
-
-function getErrorMessage(error, fallback) {
-  if (error instanceof Error) return error.message;
-  return fallback;
-}
+import { getErrorMessage, resolveLoginFlow } from "../helpers/auth.helper";
+import {
+  clearRememberedUser,
+  getRememberedUser,
+  setRememberedUser,
+} from "../../../utils/storage";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
+  const { startTwoFactorChallenge } = useAuth();
 
-  const [email, setEmail] = useState("");
+  const rememberedUser = useMemo(() => getRememberedUser(), []);
+  const [email, setEmail] = useState(rememberedUser);
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(Boolean(rememberedUser));
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const canSubmit = useMemo(() => {
-    return email.trim().length > 0 && password.trim().length >= 6 && !loading;
+    return email.trim().length > 0 && password.trim().length > 0 && !loading;
   }, [email, password, loading]);
 
-  async function handleSubmit() {
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    if (!canSubmit) return;
+
     try {
       setLoading(true);
 
-      const data = await loginRequest({
-        username: email,
+      const response = await loginRequest({
+        email: email.trim(),
         password,
       });
 
-      localStorage.setItem("token", data.access_token);
-      localStorage.setItem("token_type", data.token_type);
+      const result = resolveLoginFlow(response, email.trim());
 
       if (remember) {
-        localStorage.setItem("remember_user", email);
+        setRememberedUser(email.trim());
       } else {
-        localStorage.removeItem("remember_user");
+        clearRememberedUser();
       }
 
-      enqueueSnackbar("Inicio de sesión exitoso.", { variant: "success" });
-      console.log("Login correcto:", data);
+      if (result.type === "pending_two_factor") {
+        startTwoFactorChallenge(result.challenge);
+
+        enqueueSnackbar(
+          result.challenge.status === "pending_setup"
+            ? "Credenciales validadas. Ahora debes configurar la autenticación en dos pasos."
+            : "Credenciales validadas. Ingresa tu código de verificación.",
+          {
+            variant: "info",
+          }
+        );
+
+        navigate(routes.twoFactor, { replace: true });
+      }
     } catch (error) {
       enqueueSnackbar(getErrorMessage(error, "No se pudo iniciar sesión."), {
         variant: "error",
@@ -72,41 +92,38 @@ export default function LoginPage() {
 
   return (
     <AuthLayout>
-      {/* Fondo global */}
-        <Box
-          sx={{
-            position: "fixed",
-            inset: 0,
-            backgroundImage: `url(${bg})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundRepeat: "no-repeat",
-            zIndex: -1,
-            pointerEvents: "none",
-          }}
-        />
+      <Box
+        sx={{
+          position: "fixed",
+          inset: 0,
+          backgroundImage: `url(${bg})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          zIndex: -1,
+          pointerEvents: "none",
+        }}
+      />
 
-      {/* Capa de contraste global */}
-        <Box
-          sx={{
-            position: "fixed",
-            inset: 0,
-            background:
-              "linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.28) 45%, rgba(0,0,0,0.52) 100%)",
-            zIndex: -1,
-            pointerEvents: "none",
-          }}
-        />
+      <Box
+        sx={{
+          position: "fixed",
+          inset: 0,
+          background:
+            "linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.28) 45%, rgba(0,0,0,0.52) 100%)",
+          zIndex: -1,
+          pointerEvents: "none",
+        }}
+      />
 
-      {/* Contenido */}
-        <Box
-          sx={{
-            position: "relative",
-            zIndex: 1,
-            width: "100%",
-            maxWidth: "1200px",
-          }}
-        >
+      <Box
+        sx={{
+          position: "relative",
+          zIndex: 1,
+          width: "100%",
+          maxWidth: "1200px",
+        }}
+      >
         <Box
           sx={{
             display: "grid",
@@ -115,9 +132,9 @@ export default function LoginPage() {
             alignItems: "center",
           }}
         >
-          {/* IZQUIERDA */}
           <Box sx={{ color: "#ffffff" }}>
             <Typography
+              component="h1"
               sx={{
                 fontFamily: "Noto Sans, sans-serif",
                 fontSize: { xs: "2.1rem", md: "3rem" },
@@ -140,12 +157,11 @@ export default function LoginPage() {
                 maxWidth: "620px",
               }}
             >
-              Accede al sistema de manera segura. Si no cuentas con acceso,
-              solicita tu registro con el área correspondiente.
+              Accede al sistema de manera segura. Después de validar tus
+              credenciales, continuarás con la verificación en dos pasos.
             </Typography>
           </Box>
 
-          {/* DERECHA */}
           <Box
             sx={{
               display: "flex",
@@ -153,6 +169,8 @@ export default function LoginPage() {
             }}
           >
             <Box
+              component="form"
+              onSubmit={handleSubmit}
               sx={{
                 width: "100%",
                 maxWidth: "430px",
@@ -245,7 +263,7 @@ export default function LoginPage() {
                   label="Correo"
                   fullWidth
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(event) => setEmail(event.target.value)}
                   autoComplete="email"
                   InputLabelProps={{
                     sx: {
@@ -297,22 +315,25 @@ export default function LoginPage() {
                       "&.Mui-focused": {
                         boxShadow: "0 0 0 4px rgba(255,255,255,0.08)",
                       },
-
                       "& input:-webkit-autofill": {
-                        WebkitBoxShadow: "0 0 0 1000px rgba(255,255,255,0.08) inset",
+                        WebkitBoxShadow:
+                          "0 0 0 1000px rgba(255,255,255,0.08) inset",
                         WebkitTextFillColor: "#ffffff",
                         caretColor: "#ffffff",
                         borderRadius: "14px",
-                        transition: "background-color 9999s ease-out, color 9999s ease-out",
+                        transition:
+                          "background-color 9999s ease-out, color 9999s ease-out",
                       },
                       "& input:-webkit-autofill:hover": {
-                        WebkitBoxShadow: "0 0 0 1000px rgba(255,255,255,0.08) inset",
+                        WebkitBoxShadow:
+                          "0 0 0 1000px rgba(255,255,255,0.08) inset",
                         WebkitTextFillColor: "#ffffff",
                         caretColor: "#ffffff",
                         borderRadius: "14px",
                       },
                       "& input:-webkit-autofill:focus": {
-                        WebkitBoxShadow: "0 0 0 1000px rgba(255,255,255,0.08) inset",
+                        WebkitBoxShadow:
+                          "0 0 0 1000px rgba(255,255,255,0.08) inset",
                         WebkitTextFillColor: "#ffffff",
                         caretColor: "#ffffff",
                         borderRadius: "14px",
@@ -326,7 +347,7 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   fullWidth
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(event) => setPassword(event.target.value)}
                   autoComplete="current-password"
                   InputLabelProps={{
                     sx: {
@@ -398,7 +419,6 @@ export default function LoginPage() {
                       "&.Mui-focused": {
                         boxShadow: "0 0 0 4px rgba(255,255,255,0.08)",
                       },
-
                       "& input::-ms-reveal": {
                         display: "none",
                       },
@@ -410,22 +430,25 @@ export default function LoginPage() {
                         visibility: "hidden",
                         pointerEvents: "none",
                       },
-
                       "& input:-webkit-autofill": {
-                        WebkitBoxShadow: "0 0 0 1000px rgba(255,255,255,0.08) inset",
+                        WebkitBoxShadow:
+                          "0 0 0 1000px rgba(255,255,255,0.08) inset",
                         WebkitTextFillColor: "#ffffff",
                         caretColor: "#ffffff",
                         borderRadius: "14px",
-                        transition: "background-color 9999s ease-out, color 9999s ease-out",
+                        transition:
+                          "background-color 9999s ease-out, color 9999s ease-out",
                       },
                       "& input:-webkit-autofill:hover": {
-                        WebkitBoxShadow: "0 0 0 1000px rgba(255,255,255,0.08) inset",
+                        WebkitBoxShadow:
+                          "0 0 0 1000px rgba(255,255,255,0.08) inset",
                         WebkitTextFillColor: "#ffffff",
                         caretColor: "#ffffff",
                         borderRadius: "14px",
                       },
                       "& input:-webkit-autofill:focus": {
-                        WebkitBoxShadow: "0 0 0 1000px rgba(255,255,255,0.08) inset",
+                        WebkitBoxShadow:
+                          "0 0 0 1000px rgba(255,255,255,0.08) inset",
                         WebkitTextFillColor: "#ffffff",
                         caretColor: "#ffffff",
                         borderRadius: "14px",
@@ -447,7 +470,7 @@ export default function LoginPage() {
                     control={
                       <Checkbox
                         checked={remember}
-                        onChange={(e) => setRemember(e.target.checked)}
+                        onChange={(event) => setRemember(event.target.checked)}
                         sx={{
                           color: "rgba(255,255,255,0.72)",
                           "&.Mui-checked": {
@@ -464,7 +487,7 @@ export default function LoginPage() {
                           fontFamily: "Noto Sans, sans-serif",
                         }}
                       >
-                        Mantener sesión
+                        Recordar correo
                       </Typography>
                     }
                     sx={{ m: 0 }}
@@ -472,7 +495,7 @@ export default function LoginPage() {
 
                   <Button
                     variant="text"
-                    onClick={() => navigate("/forgot-password")}
+                    onClick={() => navigate(routes.forgotPassword)}
                     sx={{
                       minWidth: "auto",
                       p: 0,
@@ -493,9 +516,9 @@ export default function LoginPage() {
 
                 <Button
                   fullWidth
+                  type="submit"
                   variant="contained"
                   disabled={!canSubmit}
-                  onClick={handleSubmit}
                   sx={{
                     textTransform: "none",
                     py: 1.45,
@@ -522,7 +545,7 @@ export default function LoginPage() {
                     },
                   }}
                 >
-                  {loading ? "Entrando..." : "Iniciar sesión"}
+                  {loading ? "Validando..." : "Iniciar sesión"}
                 </Button>
 
                 <Typography

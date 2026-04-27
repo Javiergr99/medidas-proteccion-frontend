@@ -1,112 +1,142 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 import PropTypes from "prop-types";
+import {
+  clearAuthSession,
+  clearPendingTwoFactorChallenge,
+  clearPostLoginWelcomeFlag,
+  getPendingTwoFactorChallenge,
+  getStoredAuthSession,
+  persistAuthSession,
+  persistPendingTwoFactorChallenge,
+} from "../utils/storage";
 
-/**
- * Contexto de autenticación.
- * Maneja usuario actual, token y estado autenticado
- * de forma segura aunque localStorage tenga datos corruptos.
- */
 const AuthContext = createContext(null);
 
-/**
- * Lee y parsea un valor JSON de localStorage sin romper el render.
- * @param {string} key
- * @param {any} fallback
- * @returns {any}
- */
-function safeReadJSON(key, fallback = null) {
-  try {
-    const raw = localStorage.getItem(key);
-
-    if (!raw || raw === "undefined" || raw === "null") {
-      return fallback;
-    }
-
-    return JSON.parse(raw);
-  } catch (error) {
-    console.error(`Error leyendo localStorage["${key}"]`, error);
-    localStorage.removeItem(key);
-    return fallback;
-  }
-}
-
-/**
- * Lee texto plano de localStorage de forma segura.
- * @param {string} key
- * @param {string|null} fallback
- * @returns {string|null}
- */
-function safeReadText(key, fallback = null) {
-  try {
-    const value = localStorage.getItem(key);
-    return value ?? fallback;
-  } catch (error) {
-    console.error(`Error leyendo localStorage["${key}"]`, error);
-    localStorage.removeItem(key);
-    return fallback;
-  }
-}
-
-/**
- * Proveedor del contexto de autenticación.
- * @param {{ children: import("react").ReactNode }} props
- * @returns {JSX.Element}
- */
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => safeReadJSON("user", null));
-  const [token, setToken] = useState(() => safeReadText("token", null));
+function buildInitialAuthState() {
+  const { token, tokenType, user } = getStoredAuthSession();
+  const pendingTwoFactor = getPendingTwoFactorChallenge();
 
   const isAuthenticated = Boolean(token);
+  const isPendingTwoFactor = Boolean(
+    pendingTwoFactor?.tempUserId && pendingTwoFactor?.status
+  );
 
-  /**
-   * Guarda sesión en estado y localStorage.
-   * @param {{ user?: object|null, token?: string|null }} payload
-   */
-  const login = ({ user: nextUser = null, token: nextToken = null }) => {
-    setUser(nextUser);
-    setToken(nextToken);
-
-    try {
-      if (nextUser) {
-        localStorage.setItem("user", JSON.stringify(nextUser));
-      } else {
-        localStorage.removeItem("user");
-      }
-
-      if (nextToken) {
-        localStorage.setItem("token", nextToken);
-      } else {
-        localStorage.removeItem("token");
-      }
-    } catch (error) {
-      console.error("Error guardando sesión en localStorage", error);
-    }
+  return {
+    token,
+    tokenType,
+    user,
+    pendingTwoFactor,
+    isAuthenticated,
+    isPendingTwoFactor,
   };
+}
 
-  /**
-   * Limpia sesión.
-   */
-  const logout = () => {
-    setUser(null);
-    setToken(null);
+export function AuthProvider({ children }) {
+  const [authState, setAuthState] = useState(buildInitialAuthState);
 
-    try {
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
-    } catch (error) {
-      console.error("Error limpiando localStorage", error);
-    }
-  };
+  const completeLogin = useCallback(({ token, tokenType, user }) => {
+    persistAuthSession({
+      token,
+      tokenType,
+      user: user || null,
+    });
+
+    clearPendingTwoFactorChallenge();
+
+    setAuthState({
+      token,
+      tokenType,
+      user: user || null,
+      pendingTwoFactor: null,
+      isAuthenticated: Boolean(token),
+      isPendingTwoFactor: false,
+    });
+  }, []);
+
+  const startTwoFactorChallenge = useCallback((challenge) => {
+    clearAuthSession();
+    persistPendingTwoFactorChallenge(challenge);
+
+    setAuthState({
+      token: null,
+      tokenType: null,
+      user: null,
+      pendingTwoFactor: challenge,
+      isAuthenticated: false,
+      isPendingTwoFactor: Boolean(
+        challenge?.tempUserId && challenge?.status
+      ),
+    });
+  }, []);
+
+  const updatePendingTwoFactorChallenge = useCallback((partialData) => {
+    setAuthState((prev) => {
+      const nextChallenge = {
+        ...(prev.pendingTwoFactor || {}),
+        ...(partialData || {}),
+      };
+
+      persistPendingTwoFactorChallenge(nextChallenge);
+
+      return {
+        ...prev,
+        pendingTwoFactor: nextChallenge,
+        isPendingTwoFactor: Boolean(
+          nextChallenge?.tempUserId && nextChallenge?.status
+        ),
+      };
+    });
+  }, []);
+
+  const clearTwoFactorChallenge = useCallback(() => {
+    clearPendingTwoFactorChallenge();
+
+    setAuthState((prev) => ({
+      ...prev,
+      pendingTwoFactor: null,
+      isPendingTwoFactor: false,
+    }));
+  }, []);
+
+  const logout = useCallback(() => {
+    clearAuthSession();
+    clearPendingTwoFactorChallenge();
+    clearPostLoginWelcomeFlag();
+
+    setAuthState({
+      token: null,
+      tokenType: null,
+      user: null,
+      pendingTwoFactor: null,
+      isAuthenticated: false,
+      isPendingTwoFactor: false,
+    });
+  }, []);
 
   const value = useMemo(
     () => ({
-      user,
-      token,
-      isAuthenticated,
-      login,
+      ...authState,
+      login: completeLogin,
+      completeLogin,
+      startTwoFactorChallenge,
+      updatePendingTwoFactorChallenge,
+      clearTwoFactorChallenge,
       logout,
     }),
-    [user, token, isAuthenticated]
+    [
+      authState,
+      completeLogin,
+      startTwoFactorChallenge,
+      updatePendingTwoFactorChallenge,
+      clearTwoFactorChallenge,
+      logout,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -116,21 +146,11 @@ AuthProvider.propTypes = {
   children: PropTypes.node.isRequired,
 };
 
-/**
- * Hook para consumir el contexto.
- * @returns {{
- *  user: object|null,
- *  token: string|null,
- *  isAuthenticated: boolean,
- *  login: Function,
- *  logout: Function
- * }}
- */
-export function useAuth() {
+export function useAuthContext() {
   const context = useContext(AuthContext);
 
   if (!context) {
-    throw new Error("useAuth debe usarse dentro de <AuthProvider>");
+    throw new Error("useAuthContext debe usarse dentro de AuthProvider");
   }
 
   return context;

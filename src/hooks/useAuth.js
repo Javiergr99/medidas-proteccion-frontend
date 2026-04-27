@@ -1,4 +1,4 @@
-import { useAuth as useAuthContext } from "../context/AuthContext";
+import { useAuthContext } from "../context/AuthContext";
 
 /**
  * Hook de acceso al contexto de autenticación.

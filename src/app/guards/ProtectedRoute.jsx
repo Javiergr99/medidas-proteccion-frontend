@@ -7,6 +7,7 @@ import { useAuth } from "../../hooks/useAuth";
 /**
  * Protege rutas privadas.
  * Si no hay sesión, redirige al login.
+ * Si hay reto 2FA pendiente, redirige a verificación.
  *
  * @param {{
  *   children?: import("react").ReactNode,
@@ -18,7 +19,11 @@ export default function ProtectedRoute({
   children = null,
   redirectTo = routes.login,
 }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isPendingTwoFactor } = useAuth();
+
+  if (isPendingTwoFactor) {
+    return <Navigate to={routes.twoFactor} replace />;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to={redirectTo} replace />;

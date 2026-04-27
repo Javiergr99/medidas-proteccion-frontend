@@ -1,13 +1,12 @@
-/**
- * Rutas centralizadas de la aplicación.
- */
-const routes = Object.freeze({
+const routes = {
   root: "/",
   login: "/login",
   forgotPassword: "/forgot-password",
+  twoFactor: "/auth/verificacion-2fa",
+  postLoginWelcome: "/auth/bienvenida",
   dashboard: "/dashboard",
   catalogos: "/catalogos",
   medidas: "/medidas",
-});
+};
 
 export default routes;

@@ -43,12 +43,20 @@ coverage/
 .temp/
 tmp/
 
+# ESLint / herramientas
+.eslintcache
+
 # Archivos TypeScript
 *.tsbuildinfo
 
 # Archivos generados por pruebas
 playwright-report/
 test-results/
+playwright/.cache/
+
+# Capturas locales de pruebas/debug
+playwright-*.png
+*-debug.png
 
 # Archivos locales opcionales
 .vercel/
