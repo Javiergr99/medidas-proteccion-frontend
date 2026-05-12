@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AppBar,
   Toolbar,
@@ -18,6 +19,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 
+import routes from "../../app/routes";
 import gobLogo from "../../assets/images/gobmx-logo.png";
 
 const MOBILE_ITEM_HEIGHT = 45;
@@ -31,6 +33,8 @@ const MOBILE_ITEM_HEIGHT = 45;
 export default function GobMxHeader() {
   const [open, setOpen] = useState(false);
 
+  const navigate = useNavigate();
+
   const theme = useTheme();
   const mdUp = useMediaQuery(theme.breakpoints.up("md"));
 
@@ -41,22 +45,32 @@ export default function GobMxHeader() {
   }, [mdUp, open]);
 
   /**
-   * Navegación externa segura.
-   *
-   * @param {string} url
+   * Cierra el menú móvil.
    */
-  const handleGo = (url) => {
-    window.open(url, "_blank", "noopener,noreferrer");
+  const closeMenu = () => {
     setOpen(false);
+  };
+
+  /**
+   * Navega internamente a la landing pública de Por Tus Derechos.
+   */
+  const handleGoToLanding = () => {
+    closeMenu();
+    navigate(routes.root || "/", { replace: false });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   };
 
   const menuItems = useMemo(
     () => [
-      { label: "Trámites", onClick: () => setOpen(false) },
-      { label: "Gobierno", onClick: () => setOpen(false) },
+      { label: "Trámites", onClick: closeMenu },
+      { label: "Gobierno", onClick: closeMenu },
       {
         label: "Por Tus Derechos",
-        onClick: () => handleGo("https://portusderechos.dif.gob.mx/"),
+        onClick: handleGoToLanding,
       },
     ],
     []
@@ -104,26 +118,18 @@ export default function GobMxHeader() {
               gap: { md: 4, lg: 5 },
             }}
           >
-            <Box
-              component="button"
-              type="button"
-              sx={desktopButtonStyles}
-            >
+            <Box component="button" type="button" sx={desktopButtonStyles}>
               Trámites
             </Box>
 
-            <Box
-              component="button"
-              type="button"
-              sx={desktopButtonStyles}
-            >
+            <Box component="button" type="button" sx={desktopButtonStyles}>
               Gobierno
             </Box>
 
             <Box
               component="button"
               type="button"
-              onClick={() => handleGo("https://portusderechos.dif.gob.mx/")}
+              onClick={handleGoToLanding}
               sx={desktopButtonStyles}
             >
               Por Tus Derechos
@@ -176,7 +182,7 @@ export default function GobMxHeader() {
       <Drawer
         anchor="top"
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={closeMenu}
         transitionDuration={{ enter: 320, exit: 240 }}
         ModalProps={{
           keepMounted: true,
@@ -220,7 +226,7 @@ export default function GobMxHeader() {
 
           <IconButton
             aria-label="Cerrar menú"
-            onClick={() => setOpen(false)}
+            onClick={closeMenu}
             sx={{
               color: "#ffffff",
               border: "1px solid rgba(255,255,255,0.20)",
@@ -318,7 +324,7 @@ export default function GobMxHeader() {
           >
             <IconButton
               aria-label="Buscar"
-              onClick={() => setOpen(false)}
+              onClick={closeMenu}
               sx={{
                 color: "#ffffff",
                 border: "1px solid rgba(255,255,255,0.25)",

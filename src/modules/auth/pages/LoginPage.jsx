@@ -17,12 +17,19 @@ import bg from "../../../assets/images/login.webp";
 import loginIcon from "../../../assets/icons/login-icon.png";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEnvelope, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faEyeSlash, faIdCard } from "@fortawesome/free-solid-svg-icons";
 
 import routes from "../../../app/routes";
 import { useAuth } from "../../../hooks/useAuth";
-import { loginRequest } from "../services/auth.service";
-import { getErrorMessage, resolveLoginFlow } from "../helpers/auth.helper";
+
+import {
+  clearAuthSession,
+  loginRequest,
+  saveTwoFactorTempSession,
+} from "../services/auth.service";
+
+import { getErrorMessage } from "../helpers/auth.helper";
+
 import {
   clearRememberedUser,
   getRememberedUser,
@@ -35,55 +42,114 @@ export default function LoginPage() {
   const { startTwoFactorChallenge } = useAuth();
 
   const rememberedUser = useMemo(() => getRememberedUser(), []);
-  const [email, setEmail] = useState(rememberedUser);
+  const [curp, setCurp] = useState(rememberedUser || "");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(Boolean(rememberedUser));
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  function normalizeCurp(value) {
+    return value
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 18);
+  }
+
   const canSubmit = useMemo(() => {
-    return email.trim().length > 0 && password.trim().length > 0 && !loading;
-  }, [email, password, loading]);
+    return curp.trim().length === 18 && password.trim().length > 0 && !loading;
+  }, [curp, password, loading]);
 
   async function handleSubmit(event) {
     event.preventDefault();
 
     if (!canSubmit) return;
 
+    const curpValue = curp.trim().toUpperCase();
+
     try {
       setLoading(true);
 
+      /**
+       * Limpiamos una sesión anterior antes de iniciar un nuevo flujo.
+       * Esto evita que un token viejo afecte /login, /setup o /login/2fa.
+       */
+      clearAuthSession();
+
       const response = await loginRequest({
-        email: email.trim(),
+        curp: curpValue,
         password,
       });
 
-      const result = resolveLoginFlow(response, email.trim());
+      console.log("Respuesta login:", response);
 
       if (remember) {
-        setRememberedUser(email.trim());
+        setRememberedUser(curpValue);
       } else {
         clearRememberedUser();
       }
 
-      if (result.type === "pending_two_factor") {
-        startTwoFactorChallenge(result.challenge);
+      const status = response?.status;
+      const tempUserId =
+        response?.temp_user_id ||
+        response?.tempUserId ||
+        response?.user_id ||
+        response?.userId;
 
-        enqueueSnackbar(
-          result.challenge.status === "pending_setup"
-            ? "Credenciales validadas. Ahora debes configurar la autenticación en dos pasos."
-            : "Credenciales validadas. Ingresa tu código de verificación.",
-          {
-            variant: "info",
-          }
-        );
+      const isValidTwoFactorStatus =
+        status === "pending_setup" || status === "pending_2fa";
 
-        navigate(routes.twoFactor, { replace: true });
+      if (!isValidTwoFactorStatus || !tempUserId) {
+        enqueueSnackbar("No se pudo determinar el flujo de autenticación.", {
+          variant: "warning",
+        });
+
+        console.warn("Respuesta inesperada de /login:", response);
+        return;
       }
+
+      const challenge = {
+        status,
+        tempUserId: String(tempUserId),
+        curp: curpValue,
+        userHint: curpValue,
+        message:
+          response?.message ||
+          (status === "pending_setup"
+            ? "Es obligatorio configurar la seguridad de 2 pasos."
+            : "Ingresa tu código de autenticación en dos pasos."),
+      };
+
+      /**
+       * Guardamos el reto en contexto y también en localStorage.
+       * Esto ayuda si la página /two-factor se recarga accidentalmente.
+       */
+      startTwoFactorChallenge(challenge);
+
+      saveTwoFactorTempSession({
+        userId: challenge.tempUserId,
+        status: challenge.status,
+      });
+
+      enqueueSnackbar(
+        status === "pending_setup"
+          ? "Credenciales validadas. Ahora debes configurar la autenticación en dos pasos."
+          : "Credenciales validadas. Ingresa tu código de verificación.",
+        {
+          variant: "info",
+        }
+      );
+
+      navigate(routes.twoFactor || "/two-factor", {
+        replace: true,
+        state: {
+          challenge,
+        },
+      });
     } catch (error) {
       enqueueSnackbar(getErrorMessage(error, "No se pudo iniciar sesión."), {
         variant: "error",
       });
+
       console.error("Error en login:", error);
     } finally {
       setLoading(false);
@@ -110,7 +176,18 @@ export default function LoginPage() {
           position: "fixed",
           inset: 0,
           background:
-            "linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.28) 45%, rgba(0,0,0,0.52) 100%)",
+            "linear-gradient(90deg, rgba(0,0,0,0.76) 0%, rgba(0,0,0,0.58) 34%, rgba(0,0,0,0.34) 58%, rgba(0,0,0,0.62) 100%)",
+          zIndex: -1,
+          pointerEvents: "none",
+        }}
+      />
+
+      <Box
+        sx={{
+          position: "fixed",
+          inset: 0,
+          background:
+            "radial-gradient(circle at 20% 42%, rgba(159,34,65,0.24) 0%, transparent 34%), radial-gradient(circle at 78% 18%, rgba(188,149,92,0.16) 0%, transparent 28%)",
           zIndex: -1,
           pointerEvents: "none",
         }}
@@ -132,35 +209,68 @@ export default function LoginPage() {
             alignItems: "center",
           }}
         >
-          <Box sx={{ color: "#ffffff" }}>
-            <Typography
-              component="h1"
-              sx={{
-                fontFamily: "Noto Sans, sans-serif",
-                fontSize: { xs: "2.1rem", md: "3rem" },
-                fontWeight: 600,
-                lineHeight: 1.08,
-                maxWidth: "680px",
-              }}
-            >
-              Bienvenido al Registro de Medidas de Protección
-            </Typography>
+          <Box
+          sx={{
+            color: "#ffffff",
+            maxWidth: "720px",
+            px: { xs: 0.5, sm: 1, lg: 0 },
+          }}
+        >
+          <Typography
+            component="h1"
+            sx={{
+              fontFamily: "Noto Sans, sans-serif",
+              fontSize: {
+                xs: "3.15rem",
+                sm: "4rem",
+                md: "4.8rem",
+                lg: "5.25rem",
+              },
+              fontWeight: 950,
+              lineHeight: 0.95,
+              letterSpacing: "-0.065em",
+              maxWidth: "760px",
+              color: "#ffffff",
+              textShadow:
+                "0 5px 18px rgba(0,0,0,0.60), 0 18px 48px rgba(0,0,0,0.42)",
+            }}
+          >
+            Bienvenido
+          </Typography>
 
-            <Typography
-              sx={{
-                fontFamily: "Noto Sans, sans-serif",
-                fontSize: { xs: "1rem", md: "1.05rem" },
-                fontWeight: 400,
-                lineHeight: 1.8,
-                mt: 2.5,
-                opacity: 0.94,
-                maxWidth: "620px",
-              }}
-            >
-              Accede al sistema de manera segura. Después de validar tus
-              credenciales, continuarás con la verificación en dos pasos.
-            </Typography>
-          </Box>
+          <Box
+            sx={{
+              width: { xs: 82, sm: 104 },
+              height: 5,
+              borderRadius: 999,
+              mt: 2.4,
+              mb: 2.8,
+              background:
+                "linear-gradient(90deg, #ffffff 0%, rgba(188,149,92,0.95) 100%)",
+              boxShadow: "0 8px 22px rgba(255,255,255,0.20)",
+            }}
+          />
+
+          <Typography
+            sx={{
+              fontFamily: "Noto Sans, sans-serif",
+              fontSize: {
+                xs: "1.22rem",
+                sm: "1.38rem",
+                md: "1.48rem",
+              },
+              fontWeight: 650,
+              lineHeight: 1.65,
+              color: "rgba(255,255,255,0.96)",
+              maxWidth: "690px",
+              textShadow:
+                "0 3px 12px rgba(0,0,0,0.66), 0 12px 32px rgba(0,0,0,0.38)",
+            }}
+          >
+            Accede al sistema de manera segura. Ingresa tu CURP y contraseña para
+            continuar.
+          </Typography>
+        </Box>
 
           <Box
             sx={{
@@ -255,16 +365,25 @@ export default function LoginPage() {
                   textAlign: "center",
                 }}
               >
-                Ingresa con tus credenciales para continuar.
+                Ingresa tu CURP y contraseña para continuar.
               </Typography>
 
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1.8 }}>
                 <TextField
-                  label="Correo"
+                  label="CURP"
                   fullWidth
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  autoComplete="email"
+                  value={curp}
+                  onChange={(event) => setCurp(normalizeCurp(event.target.value))}
+                  autoComplete="username"
+                  inputProps={{
+                    maxLength: 18,
+                  }}
+                  error={curp.length > 0 && curp.length !== 18}
+                  helperText={
+                    curp.length > 0 && curp.length !== 18
+                      ? "La CURP debe tener 18 caracteres."
+                      : " "
+                  }
                   InputLabelProps={{
                     sx: {
                       color: "rgba(255,255,255,0.78)",
@@ -272,6 +391,16 @@ export default function LoginPage() {
                       "&.Mui-focused": {
                         color: "#ffffff",
                       },
+                    },
+                  }}
+                  FormHelperTextProps={{
+                    sx: {
+                      color:
+                        curp.length > 0 && curp.length !== 18
+                          ? "#fecaca"
+                          : "rgba(255,255,255,0.65)",
+                      fontFamily: "Noto Sans, sans-serif",
+                      ml: 0.5,
                     },
                   }}
                   InputProps={{
@@ -288,7 +417,7 @@ export default function LoginPage() {
                         }}
                       >
                         <FontAwesomeIcon
-                          icon={faEnvelope}
+                          icon={faIdCard}
                           style={{
                             fontSize: 14,
                             color: "#ffffff",
@@ -302,6 +431,8 @@ export default function LoginPage() {
                       borderRadius: "14px",
                       color: "#ffffff",
                       fontFamily: "Noto Sans, sans-serif",
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
                       "& .MuiOutlinedInput-notchedOutline": {
                         borderColor: "rgba(255,255,255,0.18)",
                       },
@@ -487,7 +618,7 @@ export default function LoginPage() {
                           fontFamily: "Noto Sans, sans-serif",
                         }}
                       >
-                        Recordar correo
+                        Recordar CURP
                       </Typography>
                     }
                     sx={{ m: 0 }}
@@ -495,7 +626,7 @@ export default function LoginPage() {
 
                   <Button
                     variant="text"
-                    onClick={() => navigate(routes.forgotPassword)}
+                    onClick={() => navigate(routes.forgotPassword || "/login")}
                     sx={{
                       minWidth: "auto",
                       p: 0,

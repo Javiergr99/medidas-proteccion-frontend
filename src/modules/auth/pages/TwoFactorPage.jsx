@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -20,23 +20,38 @@ import {
 } from "../../../utils/storage";
 import {
   getErrorMessage,
-  normalizeEnableSuccess,
   normalizeFinalSession,
   normalizeUserProfile,
 } from "../helpers/auth.helper";
 import {
+  clearTwoFactorTempSession,
   enableTwoFactorRequest,
   fetchTwoFactorSetupQr,
   getCurrentUserProfile,
+  getTwoFactorTempSession,
+  saveAuthToken,
+  saveAuthUser,
   verifyTwoFactorRequest,
 } from "../services/auth.service";
 
 import bg from "../../../assets/images/login.webp";
 import loginIcon from "../../../assets/icons/login-icon.png";
 
+const instructionTextStyles = {
+  fontFamily: "Noto Sans, sans-serif",
+  color: "rgba(255,255,255,0.94)",
+  fontSize: { xs: "0.98rem", sm: "1.04rem" },
+  fontWeight: 650,
+  lineHeight: 1.55,
+  textShadow:
+    "0 3px 12px rgba(0,0,0,0.62), 0 10px 28px rgba(0,0,0,0.34)",
+};
+
 export default function TwoFactorPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { enqueueSnackbar } = useSnackbar();
+
   const {
     pendingTwoFactor,
     completeLogin,
@@ -47,24 +62,64 @@ export default function TwoFactorPage() {
   const [verificationCode, setVerificationCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [qrLoading, setQrLoading] = useState(false);
+  const [localQrImageUrl, setLocalQrImageUrl] = useState(null);
+
   const qrObjectUrlRef = useRef(null);
 
-  const challengeStatus = pendingTwoFactor?.status || "pending_2fa";
+  const storedTwoFactor = useMemo(() => getTwoFactorTempSession(), []);
+  const routeChallenge = location.state?.challenge || null;
+
+  const activeChallenge =
+    pendingTwoFactor ||
+    routeChallenge ||
+    (storedTwoFactor?.userId
+      ? {
+          tempUserId: storedTwoFactor.userId,
+          status: storedTwoFactor.status,
+        }
+      : null);
+
+  const challengeStatus = activeChallenge?.status || "";
   const isSetupMode = challengeStatus === "pending_setup";
-  const isVerifyMode = challengeStatus === "pending_2fa";
-  const qrImageUrl = pendingTwoFactor?.qrImageUrl || null;
-  const tempUserId = pendingTwoFactor?.tempUserId || "";
+
+  const qrImageUrl =
+    pendingTwoFactor?.qrImageUrl ||
+    localQrImageUrl ||
+    activeChallenge?.qrImageUrl ||
+    null;
+
+  const tempUserId =
+    activeChallenge?.tempUserId ||
+    activeChallenge?.user_id ||
+    activeChallenge?.userId ||
+    activeChallenge?.id ||
+    "";
+
+  useEffect(() => {
+    if (!activeChallenge || !tempUserId || !challengeStatus) {
+      navigate(routes.login || "/login", { replace: true });
+    }
+  }, [activeChallenge, challengeStatus, navigate, tempUserId]);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadSetupQr() {
+      /**
+       * El QR solo se solicita cuando el backend respondió:
+       * status === "pending_setup"
+       *
+       * Si el usuario ya tiene 2FA activo, NO llamamos /setup.
+       */
       if (!isSetupMode || !tempUserId || qrImageUrl) return;
 
       try {
         setQrLoading(true);
 
-        const qrBlob = await fetchTwoFactorSetupQr({ userId: tempUserId });
+        const qrBlob = await fetchTwoFactorSetupQr({
+          userId: String(tempUserId),
+        });
+
         const objectUrl = URL.createObjectURL(qrBlob);
 
         if (qrObjectUrlRef.current) {
@@ -75,14 +130,20 @@ export default function TwoFactorPage() {
 
         if (!isMounted) return;
 
-        updatePendingTwoFactorChallenge({
-          qrImageUrl: objectUrl,
-        });
+        setLocalQrImageUrl(objectUrl);
+
+        if (typeof updatePendingTwoFactorChallenge === "function") {
+          updatePendingTwoFactorChallenge({
+            qrImageUrl: objectUrl,
+          });
+        }
       } catch (error) {
         enqueueSnackbar(
           getErrorMessage(error, "No fue posible generar el código QR."),
           { variant: "error" }
         );
+
+        console.error("Error al generar QR 2FA:", error);
       } finally {
         if (isMounted) {
           setQrLoading(false);
@@ -128,32 +189,57 @@ export default function TwoFactorPage() {
   function handleBackToLogin() {
     clearPostLoginWelcomeFlag();
     clearTwoFactorChallenge();
-    navigate(routes.login, { replace: true });
+    clearTwoFactorTempSession();
+    navigate(routes.login || "/login", { replace: true });
   }
 
   async function finishAuthenticatedSession(sessionData) {
     const finalSession = normalizeFinalSession(sessionData);
 
-    if (!finalSession) {
+    if (!finalSession?.token) {
       throw new Error("No se recibió un token válido del backend.");
     }
 
-    const profileResponse = await getCurrentUserProfile();
-    const currentUser = normalizeUserProfile(profileResponse);
+    /**
+     * Importante:
+     * Guardamos primero el token para que getCurrentUserProfile()
+     * mande Authorization: Bearer <token>.
+     */
+    saveAuthToken(finalSession.token);
+
+    let currentUser = null;
+
+    try {
+      const profileResponse = await getCurrentUserProfile();
+      currentUser = normalizeUserProfile(profileResponse);
+      saveAuthUser(currentUser);
+    } catch (profileError) {
+      console.warn(
+        "La verificación fue correcta, pero no se pudo consultar /users/me:",
+        profileError
+      );
+    }
 
     completeLogin({
       token: finalSession.token,
-      tokenType: finalSession.tokenType,
+      tokenType: finalSession.tokenType || "bearer",
       user: currentUser,
     });
 
+    clearTwoFactorChallenge();
+    clearTwoFactorTempSession();
     setPostLoginWelcomeFlag(true);
 
     enqueueSnackbar("Verificación completada correctamente.", {
       variant: "success",
     });
 
-    navigate(routes.postLoginWelcome, { replace: true });
+    navigate(
+      routes.postLoginWelcome || routes.dashboard || routes.registros || "/",
+      {
+        replace: true,
+      }
+    );
   }
 
   async function handleSubmit(event) {
@@ -161,38 +247,40 @@ export default function TwoFactorPage() {
 
     if (!canSubmit) return;
 
+    const cleanCode = verificationCode.replace(/\D/g, "").slice(0, 6);
+    const cleanUserId = String(tempUserId).trim();
+
     try {
       setLoading(true);
 
+      let sessionResponse;
+
       if (isSetupMode) {
-        const enableResponse = await enableTwoFactorRequest({
-          userId: tempUserId,
-          code: verificationCode,
+        /**
+         * Flujo primera configuración:
+         * POST /enable
+         *
+         * Activa el 2FA y devuelve el primer access_token.
+         * No llamamos después a /login/2fa.
+         */
+        sessionResponse = await enableTwoFactorRequest({
+          userId: cleanUserId,
+          code: cleanCode,
         });
-
-        const enableResult = normalizeEnableSuccess(enableResponse);
-
-        if (!enableResult) {
-          throw new Error(
-            "No se recibió la confirmación esperada al habilitar el 2FA."
-          );
-        }
-
-        const verifyResponse = await verifyTwoFactorRequest({
-          userId: tempUserId,
-          code: verificationCode,
+      } else {
+        /**
+         * Flujo normal:
+         * POST /login/2fa
+         *
+         * Se usa cuando el usuario ya tiene 2FA activo.
+         */
+        sessionResponse = await verifyTwoFactorRequest({
+          userId: cleanUserId,
+          code: cleanCode,
         });
-
-        await finishAuthenticatedSession(verifyResponse);
-        return;
       }
 
-      const verifyResponse = await verifyTwoFactorRequest({
-        userId: tempUserId,
-        code: verificationCode,
-      });
-
-      await finishAuthenticatedSession(verifyResponse);
+      await finishAuthenticatedSession(sessionResponse);
     } catch (error) {
       enqueueSnackbar(
         getErrorMessage(
@@ -203,6 +291,7 @@ export default function TwoFactorPage() {
           variant: "error",
         }
       );
+
       console.error("Error al verificar 2FA:", error);
     } finally {
       setLoading(false);
@@ -229,7 +318,18 @@ export default function TwoFactorPage() {
           position: "fixed",
           inset: 0,
           background:
-            "linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.28) 45%, rgba(0,0,0,0.52) 100%)",
+            "linear-gradient(90deg, rgba(0,0,0,0.76) 0%, rgba(0,0,0,0.58) 34%, rgba(0,0,0,0.34) 58%, rgba(0,0,0,0.62) 100%)",
+          zIndex: -1,
+          pointerEvents: "none",
+        }}
+      />
+
+      <Box
+        sx={{
+          position: "fixed",
+          inset: 0,
+          background:
+            "radial-gradient(circle at 20% 42%, rgba(159,34,65,0.24) 0%, transparent 34%), radial-gradient(circle at 78% 18%, rgba(188,149,92,0.16) 0%, transparent 28%)",
           zIndex: -1,
           pointerEvents: "none",
         }}
@@ -251,103 +351,101 @@ export default function TwoFactorPage() {
             alignItems: "center",
           }}
         >
-          <Box sx={{ color: "#ffffff" }}>
+          <Box
+            sx={{
+              color: "#ffffff",
+              maxWidth: "720px",
+              px: { xs: 0.5, sm: 1, lg: 0 },
+            }}
+          >
             <Typography
               component="h1"
               data-testid="two-factor-page-title"
               sx={{
                 fontFamily: "Noto Sans, sans-serif",
-                fontSize: { xs: "2rem", md: "2.85rem" },
-                fontWeight: 600,
-                lineHeight: 1.08,
-                maxWidth: "680px",
+                fontSize: {
+                  xs: "2.65rem",
+                  sm: "3.35rem",
+                  md: "4rem",
+                  lg: "4.35rem",
+                },
+                fontWeight: 950,
+                lineHeight: 0.98,
+                letterSpacing: "-0.06em",
+                maxWidth: "760px",
+                color: "#ffffff",
+                textShadow:
+                  "0 5px 18px rgba(0,0,0,0.60), 0 18px 48px rgba(0,0,0,0.42)",
               }}
             >
               {isSetupMode
                 ? "Configura tu autenticación en dos pasos"
-                : "Verifica tu acceso con autenticación en dos pasos"}
+                : "Verifica tu acceso seguro"}
             </Typography>
+
+            <Box
+              sx={{
+                width: { xs: 82, sm: 104 },
+                height: 5,
+                borderRadius: 999,
+                mt: 2.4,
+                mb: 2.8,
+                background:
+                  "linear-gradient(90deg, #ffffff 0%, rgba(188,149,92,0.95) 100%)",
+                boxShadow: "0 8px 22px rgba(255,255,255,0.20)",
+              }}
+            />
 
             <Typography
               sx={{
                 fontFamily: "Noto Sans, sans-serif",
-                fontSize: { xs: "1rem", md: "1.05rem" },
-                fontWeight: 400,
-                lineHeight: 1.8,
-                mt: 2.5,
-                opacity: 0.94,
-                maxWidth: "650px",
+                fontSize: {
+                  xs: "1.12rem",
+                  sm: "1.25rem",
+                  md: "1.34rem",
+                },
+                fontWeight: 650,
+                lineHeight: 1.65,
+                color: "rgba(255,255,255,0.96)",
+                maxWidth: "700px",
+                textShadow:
+                  "0 3px 12px rgba(0,0,0,0.66), 0 12px 32px rgba(0,0,0,0.38)",
               }}
             >
               {isSetupMode
-                ? "Es obligatorio configurar la autenticación en dos pasos para continuar. Escanea el código QR con Google Authenticator o Microsoft Authenticator y después captura el código generado."
-                : "Ingresa el código de seis dígitos generado por tu aplicación autenticadora para completar el acceso."}
+                ? "Es obligatorio configurar la autenticación en dos pasos para proteger tu cuenta. Escanea el código QR con Google Authenticator o Microsoft Authenticator y captura el código generado."
+                : "Ingresa el código de seis dígitos generado por tu aplicación autenticadora para completar el acceso a la plataforma."}
             </Typography>
 
-            <Stack spacing={1.2} sx={{ mt: 3 }}>
+            <Stack spacing={1.35} sx={{ mt: 3.5 }}>
               {isSetupMode ? (
                 <>
-                  <Typography
-                    sx={{
-                      fontFamily: "Noto Sans, sans-serif",
-                      color: "rgba(255,255,255,0.92)",
-                      fontSize: "0.95rem",
-                    }}
-                  >
+                  <Typography sx={instructionTextStyles}>
                     • Abre Google Authenticator o Microsoft Authenticator.
                   </Typography>
 
-                  <Typography
-                    sx={{
-                      fontFamily: "Noto Sans, sans-serif",
-                      color: "rgba(255,255,255,0.92)",
-                      fontSize: "0.95rem",
-                    }}
-                  >
+                  <Typography sx={instructionTextStyles}>
                     • Escanea el código QR que se muestra en pantalla.
                   </Typography>
 
-                  <Typography
-                    sx={{
-                      fontFamily: "Noto Sans, sans-serif",
-                      color: "rgba(255,255,255,0.92)",
-                      fontSize: "0.95rem",
-                    }}
-                  >
-                    • Si vuelves a generar el QR, el anterior dejará de servir.
+                  <Typography sx={instructionTextStyles}>
+                    • Captura el código actual de seis dígitos para activar tu
+                    acceso.
                   </Typography>
                 </>
               ) : (
                 <>
-                  <Typography
-                    sx={{
-                      fontFamily: "Noto Sans, sans-serif",
-                      color: "rgba(255,255,255,0.92)",
-                      fontSize: "0.95rem",
-                    }}
-                  >
+                  <Typography sx={instructionTextStyles}>
                     • Abre tu aplicación autenticadora y localiza el código
                     vigente.
                   </Typography>
 
-                  <Typography
-                    sx={{
-                      fontFamily: "Noto Sans, sans-serif",
-                      color: "rgba(255,255,255,0.92)",
-                      fontSize: "0.95rem",
-                    }}
-                  >
+                  <Typography sx={instructionTextStyles}>
                     • Verifica que la hora del dispositivo esté configurada
-                    automáticamente si el código no coincide.
+                    automáticamente.
                   </Typography>
 
-                  <Typography
-                    sx={{
-                      fontFamily: "Noto Sans, sans-serif",
-                      color: "rgba(255,255,255,0.92)",
-                      fontSize: "0.95rem",
-                    }}
-                  >
+                  <Typography sx={instructionTextStyles}>
                     • Captura el código actual de seis dígitos para continuar.
                   </Typography>
                 </>
@@ -447,12 +545,12 @@ export default function TwoFactorPage() {
                   textAlign: "center",
                 }}
               >
-                {pendingTwoFactor?.userHint || pendingTwoFactor?.email
-                  ? `Cuenta: ${pendingTwoFactor.userHint || pendingTwoFactor.email}`
+                {activeChallenge?.userHint || activeChallenge?.curp
+                  ? `Cuenta: ${activeChallenge.userHint || activeChallenge.curp}`
                   : "Continúa con la verificación de seguridad."}
               </Typography>
 
-              {pendingTwoFactor?.message ? (
+              {activeChallenge?.message ? (
                 <Alert
                   severity="info"
                   sx={{
@@ -461,7 +559,7 @@ export default function TwoFactorPage() {
                     backgroundColor: "rgba(255,255,255,0.92)",
                   }}
                 >
-                  {pendingTwoFactor.message}
+                  {activeChallenge.message}
                 </Alert>
               ) : null}
 
@@ -475,7 +573,7 @@ export default function TwoFactorPage() {
                         backgroundColor: "rgba(255,255,255,0.92)",
                       }}
                     >
-                      Generando código QR...
+                      Generando código QR…
                     </Alert>
                   ) : qrImageUrl ? (
                     <Box

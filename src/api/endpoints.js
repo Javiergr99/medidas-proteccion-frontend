@@ -1,10 +1,36 @@
 const endpoints = {
   auth: {
+    /**
+     * Paso 1:
+     * Valida CURP + contraseña.
+     * No devuelve token.
+     * Devuelve pending_setup o pending_2fa.
+     */
     login: "/login",
-    setupTwoFactor: "/setup",
-    enableTwoFactor: "/enable",
-    verifyTwoFactor: "/login/2fa",
+
+    /**
+     * Perfil del usuario autenticado.
+     * Requiere Authorization Bearer.
+     */
     me: "/users/me",
+
+    /**
+     * Primera configuración 2FA.
+     * Devuelve imagen PNG del QR.
+     */
+    setupTwoFactor: "/setup",
+
+    /**
+     * Activa 2FA por primera vez.
+     * Devuelve access_token.
+     */
+    enableTwoFactor: "/enable",
+
+    /**
+     * Verifica 2FA en inicios posteriores.
+     * Devuelve access_token.
+     */
+    verifyTwoFactor: "/login/2fa",
   },
 };
 

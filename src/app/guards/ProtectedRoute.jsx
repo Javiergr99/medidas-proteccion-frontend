@@ -3,9 +3,11 @@ import { Navigate, Outlet } from "react-router-dom";
 
 import routes from "../routes";
 import { useAuth } from "../../hooks/useAuth";
+import { getTwoFactorTempSession } from "../../modules/auth/services/auth.service";
 
 /**
  * Protege rutas privadas.
+ *
  * Si no hay sesión, redirige al login.
  * Si hay reto 2FA pendiente, redirige a verificación.
  *
@@ -21,7 +23,14 @@ export default function ProtectedRoute({
 }) {
   const { isAuthenticated, isPendingTwoFactor } = useAuth();
 
-  if (isPendingTwoFactor) {
+  const storedTwoFactor = getTwoFactorTempSession();
+
+  const hasStoredTwoFactorChallenge =
+    Boolean(storedTwoFactor?.userId) &&
+    (storedTwoFactor?.status === "pending_setup" ||
+      storedTwoFactor?.status === "pending_2fa");
+
+  if (isPendingTwoFactor || hasStoredTwoFactorChallenge) {
     return <Navigate to={routes.twoFactor} replace />;
   }
 

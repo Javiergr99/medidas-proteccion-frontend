@@ -4,9 +4,11 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import routes from "../routes";
 import { useAuth } from "../../hooks/useAuth";
 import { getPostLoginWelcomeFlag } from "../../utils/storage";
+import { getTwoFactorTempSession } from "../../modules/auth/services/auth.service";
 
 /**
  * Protege rutas públicas como login.
+ *
  * Si ya hay sesión, redirige al dashboard o a bienvenida.
  * Si existe reto 2FA pendiente, redirige a verificación.
  *
@@ -24,8 +26,17 @@ export default function PublicRoute({
   const location = useLocation();
 
   const shouldShowPostLoginWelcome = getPostLoginWelcomeFlag();
+  const storedTwoFactor = getTwoFactorTempSession();
 
-  if (isPendingTwoFactor && location.pathname !== routes.twoFactor) {
+  const hasStoredTwoFactorChallenge =
+    Boolean(storedTwoFactor?.userId) &&
+    (storedTwoFactor?.status === "pending_setup" ||
+      storedTwoFactor?.status === "pending_2fa");
+
+  const shouldGoToTwoFactor =
+    isPendingTwoFactor || hasStoredTwoFactorChallenge;
+
+  if (shouldGoToTwoFactor && location.pathname !== routes.twoFactor) {
     return <Navigate to={routes.twoFactor} replace />;
   }
 
