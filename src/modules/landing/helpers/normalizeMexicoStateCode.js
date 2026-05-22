@@ -120,26 +120,7 @@ const DIRECT_STATE_CODES = new Set([
   "MX-ZAC",
 ]);
 
-const normalizeText = (value) =>
-  String(value ?? "")
-    .trim()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ")
-    .toLowerCase();
-
-const normalizeNumericKey = (value) => {
-  const cleanValue = String(value ?? "").trim();
-
-  if (!/^\d{1,2}$/.test(cleanValue)) {
-    return null;
-  }
-
-  return cleanValue.padStart(2, "0");
-};
-
-const getCandidateValues = (properties = {}) => {
-  const preferredKeys = [
+const PREFERRED_PROPERTY_KEYS = [
   "id",
   "ID",
   "code",
@@ -169,15 +150,51 @@ const getCandidateValues = (properties = {}) => {
   "STATE",
 ];
 
-  const preferredValues = preferredKeys
-    .map((key) => properties[key])
-    .filter((value) => value !== undefined && value !== null && value !== "");
+const normalizeText = (value) =>
+  String(value ?? "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .toLowerCase();
 
-  const fallbackValues = Object.values(properties).filter(
-    (value) => value !== undefined && value !== null && value !== ""
-  );
+const normalizeNumericKey = (value) => {
+  const cleanValue = String(value ?? "").trim();
 
-  return [...preferredValues, ...fallbackValues];
+  if (!/^\d{1,2}$/.test(cleanValue)) {
+    return null;
+  }
+
+  return cleanValue.padStart(2, "0");
+};
+
+const hasUsableValue = (value) =>
+  value !== undefined && value !== null && value !== "";
+
+/**
+ * Obtiene candidatos sin usar map().filter().
+ * Primero agrega valores de llaves preferidas y luego los valores restantes.
+ */
+const getCandidateValues = (properties = {}) => {
+  const candidates = [];
+  const usedValues = new Set();
+
+  for (const key of PREFERRED_PROPERTY_KEYS) {
+    const value = properties[key];
+
+    if (!hasUsableValue(value)) continue;
+
+    candidates.push(value);
+    usedValues.add(value);
+  }
+
+  for (const value of Object.values(properties)) {
+    if (!hasUsableValue(value) || usedValues.has(value)) continue;
+
+    candidates.push(value);
+  }
+
+  return candidates;
 };
 
 export const normalizeMexicoStateCode = (properties = {}) => {

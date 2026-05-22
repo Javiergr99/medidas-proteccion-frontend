@@ -9,7 +9,9 @@ import {
   Typography,
 } from "@mui/material";
 
-export default function UserNoticeModal({ open, onAccept, onReject }) {
+const noop = () => {};
+
+export default function UserNoticeModal({ open, onAccept, onReject = noop }) {
   return (
     <Modal
       open={open}
@@ -155,8 +157,4 @@ UserNoticeModal.propTypes = {
   open: PropTypes.bool.isRequired,
   onAccept: PropTypes.func.isRequired,
   onReject: PropTypes.func,
-};
-
-UserNoticeModal.defaultProps = {
-  onReject: () => {},
 };

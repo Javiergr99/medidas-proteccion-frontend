@@ -21,6 +21,28 @@ function unwrapPayload(payload) {
   return isPlainObject(payload.data) ? payload.data : payload;
 }
 
+/**
+ * Convierte un arreglo de errores del backend en un mensaje legible.
+ * Evita usar map().filter(Boolean) para no recorrer el arreglo dos veces.
+ */
+function buildDetailArrayMessage(detailList) {
+  const messages = [];
+
+  for (const item of detailList) {
+    const message = item?.msg || item?.message || "";
+
+    if (message) {
+      messages.push(message);
+    }
+  }
+
+  return messages.join(" ");
+}
+
+/**
+ * Obtiene un mensaje de error legible desde respuestas del backend,
+ * errores de Axios o errores nativos de JavaScript.
+ */
 export function getErrorMessage(
   error,
   fallback = "Ocurrió un error al procesar la solicitud."
@@ -39,10 +61,8 @@ export function getErrorMessage(
   }
 
   if (Array.isArray(responseData?.detail)) {
-    return responseData.detail
-      .map((item) => item?.msg || item?.message || "")
-      .filter(Boolean)
-      .join(" ");
+    const message = buildDetailArrayMessage(responseData.detail);
+    return message || fallback;
   }
 
   if (isPlainObject(responseData?.detail)) {
@@ -52,6 +72,9 @@ export function getErrorMessage(
   return fallback;
 }
 
+/**
+ * Resuelve el nombre visible del usuario autenticado.
+ */
 export function getAuthUserDisplayName(user) {
   return (
     user?.nombre ||
@@ -64,31 +87,13 @@ export function getAuthUserDisplayName(user) {
   );
 }
 
-export function normalizePendingTwoFactor(payload, loginIdentifier = "") {
-  const data = unwrapPayload(payload);
-
-  const status = pickFirstValue(data?.status);
-  const tempUserId = pickFirstValue(data?.temp_user_id, data?.user_id);
-  const message = pickFirstValue(data?.message);
-
-  if (!status || !tempUserId) {
-    return null;
-  }
-
-  if (status !== "pending_setup" && status !== "pending_2fa") {
-    return null;
-  }
-
-  return {
-    status,
-    tempUserId,
-    email: loginIdentifier || "",
-    userHint: loginIdentifier || "",
-    message,
-    qrImageUrl: null,
-  };
-}
-
+/**
+ * Normaliza la respuesta final del backend cuando 2FA fue correcto.
+ *
+ * Aplica para:
+ * - POST /enable
+ * - POST /login/2fa
+ */
 export function normalizeFinalSession(payload) {
   const data = unwrapPayload(payload);
 
@@ -111,38 +116,13 @@ export function normalizeFinalSession(payload) {
   };
 }
 
-export function normalizeEnableSuccess(payload) {
-  const data = unwrapPayload(payload);
-  const message = pickFirstValue(data?.message);
-
-  if (message === "Autenticación de dos factores activada con éxito.") {
-    return {
-      message,
-    };
-  }
-
-  return null;
-}
-
+/**
+ * Normaliza el perfil devuelto por GET /users/me.
+ */
 export function normalizeUserProfile(payload) {
   const data = unwrapPayload(payload);
 
   if (!isPlainObject(data)) return null;
 
   return data;
-}
-
-export function resolveLoginFlow(payload, loginIdentifier = "") {
-  const pending = normalizePendingTwoFactor(payload, loginIdentifier);
-
-  if (pending) {
-    return {
-      type: "pending_two_factor",
-      challenge: pending,
-    };
-  }
-
-  throw new Error(
-    "La respuesta del login no coincide con el contrato esperado del backend."
-  );
 }
