@@ -6,6 +6,21 @@ const USER_KEY = "auth_user";
 
 const TEMP_2FA_USER_ID_KEY = "temp_2fa_user_id";
 const TEMP_2FA_STATUS_KEY = "temp_2fa_status";
+const TEMP_2FA_EXPIRES_AT_KEY = "temp_2fa_expires_at";
+
+/**
+ * Tiempo máximo de vida para la sesión temporal 2FA.
+ *
+ * Motivo:
+ * Evita que un reto 2FA incompleto quede guardado indefinidamente
+ * en localStorage y fuerce redirecciones futuras a la pantalla 2FA.
+ */
+const TEMP_2FA_SESSION_TTL_MS = 10 * 60 * 1000;
+
+/**
+ * Estados válidos que puede devolver el backend después de POST /login.
+ */
+const VALID_TEMP_2FA_STATUSES = ["pending_setup", "pending_2fa"];
 
 /**
  * Guarda el token final de sesión.
@@ -19,32 +34,11 @@ export function saveAuthToken(token) {
 }
 
 /**
- * Obtiene el token JWT actual.
- */
-export function getAuthToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-/**
  * Guarda el perfil del usuario autenticado.
  */
 export function saveAuthUser(user) {
   if (!user) return;
   localStorage.setItem(USER_KEY, JSON.stringify(user));
-}
-
-/**
- * Obtiene el usuario autenticado desde localStorage.
- */
-export function getAuthUser() {
-  try {
-    const user = localStorage.getItem(USER_KEY);
-    return user ? JSON.parse(user) : null;
-  } catch (error) {
-    console.warn("No se pudo leer auth_user desde localStorage:", error);
-    localStorage.removeItem(USER_KEY);
-    return null;
-  }
 }
 
 /**
@@ -56,28 +50,94 @@ export function clearAuthSession() {
 }
 
 /**
- * Guarda datos temporales del flujo 2FA.
- * Se usan después del POST /login.
+ * Valida si un estado temporal 2FA es reconocido por el frontend.
+ *
+ * @param {string | null | undefined} status
+ * @returns {boolean}
  */
-export function saveTwoFactorTempSession({ userId, status }) {
-  if (userId) {
-    localStorage.setItem(TEMP_2FA_USER_ID_KEY, String(userId));
+function isValidTempTwoFactorStatus(status) {
+  return VALID_TEMP_2FA_STATUSES.includes(String(status || ""));
+}
+
+/**
+ * Calcula la fecha de expiración de la sesión temporal 2FA.
+ *
+ * @returns {number}
+ */
+function getTwoFactorExpirationTimestamp() {
+  return Date.now() + TEMP_2FA_SESSION_TTL_MS;
+}
+
+/**
+ * Revisa si una fecha de expiración temporal ya venció.
+ *
+ * @param {string | null} expiresAt
+ * @returns {boolean}
+ */
+function isExpiredTwoFactorTempSession(expiresAt) {
+  const expirationTimestamp = Number(expiresAt);
+
+  if (!Number.isFinite(expirationTimestamp)) {
+    return true;
   }
 
-  if (status) {
-    localStorage.setItem(TEMP_2FA_STATUS_KEY, String(status));
+  return Date.now() > expirationTimestamp;
+}
+
+/**
+ * Guarda datos temporales del flujo 2FA.
+ * Se usan después del POST /login.
+ *
+ * La sesión temporal expira automáticamente para evitar
+ * redirecciones indefinidas si el usuario abandona el flujo.
+ */
+export function saveTwoFactorTempSession({ userId, status }) {
+  if (!userId || !isValidTempTwoFactorStatus(status)) {
+    clearTwoFactorTempSession();
+    return;
   }
+
+  localStorage.setItem(TEMP_2FA_USER_ID_KEY, String(userId));
+  localStorage.setItem(TEMP_2FA_STATUS_KEY, String(status));
+  localStorage.setItem(
+    TEMP_2FA_EXPIRES_AT_KEY,
+    String(getTwoFactorExpirationTimestamp())
+  );
 }
 
 /**
  * Obtiene los datos temporales del flujo 2FA.
- * Esto ayuda si el usuario recarga la pantalla /two-factor.
+ *
+ * Esto ayuda si el usuario recarga la pantalla /two-factor,
+ * pero si la sesión ya expiró, se limpia y se devuelve null.
  */
 export function getTwoFactorTempSession() {
+  const userId = localStorage.getItem(TEMP_2FA_USER_ID_KEY);
+  const status = localStorage.getItem(TEMP_2FA_STATUS_KEY);
+  const expiresAt = localStorage.getItem(TEMP_2FA_EXPIRES_AT_KEY);
+
+  const hasRequiredData = Boolean(userId) && isValidTempTwoFactorStatus(status);
+
+  if (!hasRequiredData || isExpiredTwoFactorTempSession(expiresAt)) {
+    clearTwoFactorTempSession();
+    return null;
+  }
+
   return {
-    userId: localStorage.getItem(TEMP_2FA_USER_ID_KEY),
-    status: localStorage.getItem(TEMP_2FA_STATUS_KEY),
+    userId,
+    status,
+    expiresAt: Number(expiresAt),
   };
+}
+
+/**
+ * Indica si existe un reto 2FA temporal válido.
+ *
+ * Centraliza la validación para evitar repetir esta lógica
+ * en ProtectedRoute, PublicRoute y PendingTwoFactorRoute.
+ */
+export function hasValidTwoFactorTempSession() {
+  return Boolean(getTwoFactorTempSession());
 }
 
 /**
@@ -86,6 +146,7 @@ export function getTwoFactorTempSession() {
 export function clearTwoFactorTempSession() {
   localStorage.removeItem(TEMP_2FA_USER_ID_KEY);
   localStorage.removeItem(TEMP_2FA_STATUS_KEY);
+  localStorage.removeItem(TEMP_2FA_EXPIRES_AT_KEY);
 }
 
 /**

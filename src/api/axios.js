@@ -1,16 +1,23 @@
 import axios from "axios";
 
+import {
+  clearAuthSession,
+  clearPendingTwoFactorChallenge,
+  clearPostLoginWelcomeFlag,
+  getStoredAuthSession,
+} from "../utils/storage";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-/**
- * Endpoints públicos del flujo de autenticación.
- * 
- * Importante:
- * Estos endpoints NO necesitan Authorization Bearer.
- * Si dejamos que se mande un token viejo desde localStorage,
- * puede provocar comportamientos extraños durante login o 2FA.
- */
 const PUBLIC_AUTH_ENDPOINTS = ["/login", "/setup", "/enable", "/login/2fa"];
+
+const AUTH_FLOW_PAGES = ["/login", "/auth/verificacion-2fa"];
+
+const TEMP_2FA_STORAGE_KEYS = [
+  "temp_2fa_user_id",
+  "temp_2fa_status",
+  "temp_2fa_expires_at",
+];
 
 const api = axios.create({
   baseURL: API_URL,
@@ -18,20 +25,66 @@ const api = axios.create({
   withCredentials: false,
 });
 
+/**
+ * Obtiene el pathname real de una URL.
+ *
+ * Funciona tanto para:
+ * - "/login"
+ * - "http://127.0.0.1:8000/login"
+ *
+ * @param {string} url
+ * @returns {string}
+ */
+function getRequestPathname(url = "") {
+  try {
+    return new URL(url, API_URL).pathname;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Indica si una petición pertenece al flujo público de autenticación.
+ *
+ * Estos endpoints NO deben recibir Authorization Bearer, porque:
+ * - /login aún no tiene token final.
+ * - /setup, /enable y /login/2fa usan user_id temporal + código.
+ * - Un token viejo en localStorage puede provocar comportamientos confusos.
+ *
+ * @param {string} url
+ * @returns {boolean}
+ */
+function isPublicAuthEndpoint(url = "") {
+  const pathname = getRequestPathname(url);
+  return PUBLIC_AUTH_ENDPOINTS.includes(pathname);
+}
+
+/**
+ * Limpia el respaldo temporal 2FA guardado en localStorage.
+ *
+ * Se mantiene aquí para evitar ciclos de importación:
+ * axios.js -> auth.service.js -> http.js -> axios.js
+ */
+function clearLocalTwoFactorTempSession() {
+  for (const key of TEMP_2FA_STORAGE_KEYS) {
+    localStorage.removeItem(key);
+  }
+}
+
+/**
+ * Indica si la página actual pertenece al flujo de autenticación.
+ *
+ * @returns {boolean}
+ */
+function isCurrentAuthFlowPage() {
+  return AUTH_FLOW_PAGES.includes(window.location.pathname);
+}
+
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
-    const requestUrl = config.url || "";
+    const { token } = getStoredAuthSession();
 
-    const isPublicAuthEndpoint = PUBLIC_AUTH_ENDPOINTS.some((endpoint) =>
-      requestUrl.startsWith(endpoint)
-    );
-
-    /**
-     * Solo agregamos Authorization Bearer en rutas protegidas.
-     * No lo agregamos en /login, /setup, /enable ni /login/2fa.
-     */
-    if (token && !isPublicAuthEndpoint) {
+    if (token && !isPublicAuthEndpoint(config.url)) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
@@ -43,23 +96,30 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const status = error.response?.status;
-    const currentPath = window.location.pathname;
+    const status = error?.response?.status;
+    const requestUrl = error?.config?.url || "";
 
-    const isAuthFlowPage =
-      currentPath === "/login" || currentPath === "/two-factor";
+    const isAuthRequest = isPublicAuthEndpoint(requestUrl);
 
     /**
-     * Si ocurre 401 durante /two-factor, NO redirigimos automáticamente.
-     * Ejemplo: código 2FA incorrecto.
+     * Si ocurre 401 en rutas protegidas:
+     * - limpiamos sesión final
+     * - limpiamos reto 2FA pendiente
+     * - limpiamos bandera de bienvenida
+     * - limpiamos respaldo temporal 2FA
      *
-     * En ese caso, la pantalla debe mostrar el error y permitir reintentar.
+     * No redirigimos automáticamente si el error ocurrió dentro del flujo auth,
+     * porque login/2FA deben poder mostrar su propio error.
      */
-    if (status === 401 && !isAuthFlowPage) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("auth_user");
+    if (status === 401 && !isAuthRequest) {
+      clearAuthSession();
+      clearPendingTwoFactorChallenge();
+      clearPostLoginWelcomeFlag();
+      clearLocalTwoFactorTempSession();
 
-      window.location.href = "/login";
+      if (!isCurrentAuthFlowPage()) {
+        window.location.replace("/login");
+      }
     }
 
     return Promise.reject(error);

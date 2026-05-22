@@ -5,7 +5,7 @@
  * Cuando exista un endpoint real, estos datos pueden venir desde backend.
  */
 
-export const mexicoStateCatalog = [
+const mexicoStateCatalog = [
   { code: "MX-AGU", name: "Aguascalientes" },
   { code: "MX-BCN", name: "Baja California" },
   { code: "MX-BCS", name: "Baja California Sur" },

@@ -4,7 +4,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import routes from "../routes";
 import { useAuth } from "../../hooks/useAuth";
 import { getPostLoginWelcomeFlag } from "../../utils/storage";
-import { getTwoFactorTempSession } from "../../modules/auth/services/auth.service";
+import { hasValidTwoFactorTempSession } from "../../modules/auth/services/auth.service";
 
 /**
  * Protege rutas públicas como login.
@@ -26,12 +26,7 @@ export default function PublicRoute({
   const location = useLocation();
 
   const shouldShowPostLoginWelcome = getPostLoginWelcomeFlag();
-  const storedTwoFactor = getTwoFactorTempSession();
-
-  const hasStoredTwoFactorChallenge =
-    Boolean(storedTwoFactor?.userId) &&
-    (storedTwoFactor?.status === "pending_setup" ||
-      storedTwoFactor?.status === "pending_2fa");
+  const hasStoredTwoFactorChallenge = hasValidTwoFactorTempSession();
 
   const shouldGoToTwoFactor =
     isPendingTwoFactor || hasStoredTwoFactorChallenge;

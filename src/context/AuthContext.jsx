@@ -1,7 +1,7 @@
 import {
   createContext,
+  use,
   useCallback,
-  useContext,
   useMemo,
   useState,
 } from "react";
@@ -279,7 +279,7 @@ AuthProvider.propTypes = {
 };
 
 export function useAuthContext() {
-  const context = useContext(AuthContext);
+  const context = use(AuthContext);
 
   if (!context) {
     throw new Error("useAuthContext debe usarse dentro de AuthProvider");
