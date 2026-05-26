@@ -5,6 +5,7 @@ const routes = {
   twoFactor: "/auth/verificacion-2fa",
   postLoginWelcome: "/auth/bienvenida",
   dashboard: "/dashboard",
+  profile: "/perfil",
   catalogos: "/catalogos",
   medidas: "/medidas",
 };

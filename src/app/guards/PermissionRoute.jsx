@@ -6,6 +6,8 @@ import { useAuth } from "../../hooks/useAuth";
 import { getStoredAuthSession } from "../../utils/storage";
 import { hasPermissionGroupAccess } from "../../utils/rbac";
 
+const EMPTY_ACTIONS = [];
+
 /**
  * Protege rutas por permisos RBAC.
  *
@@ -17,8 +19,8 @@ export default function PermissionRoute({
   accessRule = null,
   groupCode = "",
   allowGroupOnly = false,
-  requiredActions = [],
-  fallbackActions = [],
+  requiredActions = EMPTY_ACTIONS,
+  fallbackActions = EMPTY_ACTIONS,
   redirectTo = routes.dashboard,
 }) {
   const location = useLocation();
@@ -29,8 +31,7 @@ export default function PermissionRoute({
   const hasToken = Boolean(storedSession.token);
 
   const resolvedGroupCode = accessRule?.groupCode || groupCode;
-  const resolvedAllowGroupOnly =
-    accessRule?.allowGroupOnly ?? allowGroupOnly;
+  const resolvedAllowGroupOnly = accessRule?.allowGroupOnly ?? allowGroupOnly;
   const resolvedRequiredActions =
     accessRule?.requiredActions || requiredActions;
   const resolvedFallbackActions =

@@ -1,16 +1,16 @@
 import PropTypes from "prop-types";
-import { Box, Button, Chip, Stack, Typography } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
 
-import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
-import VerifiedUserRoundedIcon from "@mui/icons-material/VerifiedUserRounded";
-import LockRoundedIcon from "@mui/icons-material/LockRounded";
+import DashboardHeroActions from "./hero/DashboardHeroActions";
+import DashboardHeroBadges from "./hero/DashboardHeroBadges";
 
 export default function DashboardHero({
   displayName,
-  role,
   registriesCount,
   loggingOut,
   onLogout,
+  onViewProfile,
+  onUpdateProfile,
 }) {
   return (
     <Box
@@ -52,50 +52,7 @@ export default function DashboardHero({
           sx={{ position: "relative", zIndex: 1 }}
         >
           <Box sx={{ maxWidth: 760 }}>
-            <Stack
-              direction="row"
-              alignItems="center"
-              spacing={1}
-              sx={{
-                mb: 1.6,
-                flexWrap: "wrap",
-                rowGap: 1,
-              }}
-            >
-              <Chip
-                icon={<VerifiedUserRoundedIcon />}
-                label="Acceso verificado"
-                sx={{
-                  height: 34,
-                  borderRadius: 999,
-                  color: "#8f1538",
-                  backgroundColor: "rgba(159,34,65,0.08)",
-                  border: "1px solid rgba(159,34,65,0.12)",
-                  fontFamily: "Noto Sans, sans-serif",
-                  fontWeight: 900,
-                  "& .MuiChip-icon": {
-                    color: "#8f1538",
-                  },
-                }}
-              />
-
-              <Chip
-                icon={<LockRoundedIcon />}
-                label={role}
-                sx={{
-                  height: 34,
-                  borderRadius: 999,
-                  color: "#72522b",
-                  backgroundColor: "rgba(188,149,92,0.13)",
-                  border: "1px solid rgba(188,149,92,0.18)",
-                  fontFamily: "Noto Sans, sans-serif",
-                  fontWeight: 900,
-                  "& .MuiChip-icon": {
-                    color: "#72522b",
-                  },
-                }}
-              />
-            </Stack>
+            <DashboardHeroBadges />
 
             <Typography
               component="h1"
@@ -148,60 +105,14 @@ export default function DashboardHero({
               minWidth: { md: 260 },
             }}
           >
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 1,
-                width: "100%",
-              }}
-            >
-              <Box sx={statCardStyles}>
-                <Typography sx={statNumberWineStyles}>
-                  {registriesCount}
-                </Typography>
-
-                <Typography sx={statLabelStyles}>Módulos</Typography>
-              </Box>
-
-              <Box sx={statCardStyles}>
-                <Typography sx={statNumberGoldStyles}>2FA</Typography>
-
-                <Typography sx={statLabelStyles}>Seguridad</Typography>
-              </Box>
-            </Box>
-
-            <Button
-              variant="outlined"
-              startIcon={<LogoutRoundedIcon />}
-              onClick={onLogout}
-              disabled={loggingOut}
-              sx={{
-                textTransform: "none",
-                borderColor: "rgba(159,34,65,0.28)",
-                color: "#8f1538",
-                fontWeight: 950,
-                borderRadius: 999,
-                px: 2.5,
-                py: 1.08,
-                width: { xs: "100%", md: "fit-content" },
-                fontFamily: "Noto Sans, sans-serif",
-                backgroundColor: "rgba(255,255,255,0.58)",
-                transition: "all 220ms ease",
-                "&:hover": {
-                  borderColor: "#8f1538",
-                  backgroundColor: "rgba(159,34,65,0.05)",
-                  transform: "translateY(-1px)",
-                },
-                "&.Mui-disabled": {
-                  borderColor: "rgba(159,34,65,0.18)",
-                  color: "rgba(143,21,56,0.45)",
-                  backgroundColor: "rgba(159,34,65,0.03)",
-                },
-              }}
-            >
-              {loggingOut ? "Cerrando..." : "Cerrar sesión"}
-            </Button>
+            <DashboardHeroActions
+              registriesCount={registriesCount}
+              displayName={displayName}
+              loggingOut={loggingOut}
+              onLogout={onLogout}
+              onViewProfile={onViewProfile}
+              onUpdateProfile={onUpdateProfile}
+            />
           </Stack>
         </Stack>
       </Box>
@@ -211,36 +122,9 @@ export default function DashboardHero({
 
 DashboardHero.propTypes = {
   displayName: PropTypes.string.isRequired,
-  role: PropTypes.string.isRequired,
   registriesCount: PropTypes.number.isRequired,
   loggingOut: PropTypes.bool.isRequired,
   onLogout: PropTypes.func.isRequired,
-};
-
-const statCardStyles = {
-  borderRadius: "18px",
-  p: 1.6,
-  background: "rgba(255,255,255,0.66)",
-  border: "1px solid rgba(15,23,42,0.06)",
-};
-
-const statNumberWineStyles = {
-  fontFamily: "Noto Sans, sans-serif",
-  fontWeight: 950,
-  color: "#8f1538",
-  fontSize: "1.45rem",
-  lineHeight: 1,
-};
-
-const statNumberGoldStyles = {
-  ...statNumberWineStyles,
-  color: "#72522b",
-};
-
-const statLabelStyles = {
-  fontFamily: "Noto Sans, sans-serif",
-  color: "#64748b",
-  fontSize: "0.74rem",
-  fontWeight: 800,
-  mt: 0.4,
+  onViewProfile: PropTypes.func.isRequired,
+  onUpdateProfile: PropTypes.func.isRequired,
 };

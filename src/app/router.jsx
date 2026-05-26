@@ -30,6 +30,8 @@ const PostLoginWelcomePage = lazy(() =>
   import("../modules/auth/pages/PostLoginWelcomePage")
 );
 
+const ProfilePage = lazy(() => import("../modules/profile/pages/ProfilePage"));
+
 const MedidasListPage = lazy(() =>
   import("../modules/medidas-proteccion/pages/MedidasListPage")
 );
@@ -71,20 +73,6 @@ function RouteLoadingFallback() {
   );
 }
 
-/**
- * Router principal de la aplicación.
- *
- * Reglas actuales:
- * - / es público.
- * - /login y /forgot-password son públicos protegidos contra sesión activa.
- * - /auth/verificacion-2fa solo permite retos 2FA pendientes.
- * - /dashboard requiere sesión autenticada.
- * - /medidas requiere sesión autenticada + permisos del grupo MP.
- *
- * Nota:
- * Aunque el RBAC ya contempla MH, RNCAS y VF, aquí no se agregan rutas
- * que todavía no existen para evitar romper el build.
- */
 export default function AppRouter() {
   return (
     <BrowserRouter>
@@ -106,6 +94,8 @@ export default function AppRouter() {
 
           <Route element={<ProtectedRoute />}>
             <Route path={routes.dashboard} element={<DashboardPage />} />
+
+            <Route path={routes.profile} element={<ProfilePage />} />
 
             <Route
               path={routes.postLoginWelcome}

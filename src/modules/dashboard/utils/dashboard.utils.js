@@ -18,9 +18,6 @@ export function getStoredDashboardUser() {
   }
 }
 
-/**
- * Normaliza texto para comparar claves, nombres o códigos.
- */
 function normalizeText(value) {
   return String(value || "")
     .trim()
@@ -29,17 +26,6 @@ function normalizeText(value) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-/**
- * Busca el grupo real del backend para un registro del catálogo.
- *
- * Primero intenta por groupCode directo:
- * - MP
- * - MH
- * - RNCAS
- * - VF
- *
- * Luego intenta por aliases/descripción para soportar variaciones.
- */
 function getRegistryPermissionGroup(user, registry) {
   const directGroup = findPermissionGroup(user, registry.groupCode);
 
@@ -77,9 +63,6 @@ function getRegistryPermissionGroup(user, registry) {
   );
 }
 
-/**
- * Extrae metadatos útiles del grupo para futuras pantallas.
- */
 function buildRegistryAccessFromGroup({ registry, group, canOpen }) {
   const modules = getModulesFromGroup(group);
   const actionNames = getActionNamesFromGroup(group);
@@ -92,26 +75,10 @@ function buildRegistryAccessFromGroup({ registry, group, canOpen }) {
     modulesCount: modules.length,
     actionsCount: actionNames.size,
     grantedActions: Array.from(actionNames),
-
-    /**
-     * Indica si además de estar asociado al grupo,
-     * cumple la regla fina para abrir la ruta.
-     *
-     * Por ahora la tarjeta se muestra por pertenencia al grupo.
-     * La ruta interna sigue protegida por PermissionRoute.
-     */
     canOpen,
   };
 }
 
-/**
- * Extrae los registros permitidos/asociados desde el usuario autenticado.
- *
- * Regla:
- * - El dashboard muestra tarjetas por pertenencia a user.permisos.grupos.
- * - No oculta la tarjeta solo porque falte una acción específica.
- * - Las acciones específicas se validan al entrar a la ruta con PermissionRoute.
- */
 export function getAllowedRegistriesFromUser(user) {
   if (!user) return [];
 
@@ -138,9 +105,6 @@ export function getAllowedRegistriesFromUser(user) {
   return allowedRegistries;
 }
 
-/**
- * Obtiene el nombre visible del usuario.
- */
 export function getDashboardDisplayName(user) {
   const fullName = [
     user?.nombre,
@@ -159,40 +123,5 @@ export function getDashboardDisplayName(user) {
     user?.correo_electronico ||
     user?.email ||
     "Usuario"
-  );
-}
-
-/**
- * Obtiene una etiqueta visible del perfil/contexto institucional.
- */
-export function getDashboardRoleLabel(user) {
-  if (typeof user?.rol === "string") return user.rol;
-  if (typeof user?.role === "string") return user.role;
-
-  const instance = user?.instancia?.siglas || user?.instancia?.nombre;
-  const status = user?.estatus?.nombre;
-
-  if (instance && status) {
-    return `${instance} · ${status}`;
-  }
-
-  if (instance) {
-    return instance;
-  }
-
-  const groups = getPermissionGroups(user)
-    .map((group) => group?.nombre)
-    .filter(Boolean);
-
-  if (groups.length > 0) {
-    return groups.join(", ");
-  }
-
-  return (
-    user?.rol?.nombre ||
-    user?.role?.nombre ||
-    user?.rol?.name ||
-    user?.role?.name ||
-    "Perfil autorizado"
   );
 }

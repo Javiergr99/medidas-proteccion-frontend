@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Box } from "@mui/material";
 import { useSnackbar } from "notistack";
@@ -10,7 +11,6 @@ import DashboardModulesPanel from "../components/DashboardModulesPanel";
 import {
   getAllowedRegistriesFromUser,
   getDashboardDisplayName,
-  getDashboardRoleLabel,
   getStoredDashboardUser,
 } from "../utils/dashboard.utils";
 
@@ -46,7 +46,6 @@ export default function DashboardPage() {
   }, [authUser]);
 
   const displayName = useMemo(() => getDashboardDisplayName(user), [user]);
-  const role = useMemo(() => getDashboardRoleLabel(user), [user]);
 
   const availableRegistries = useMemo(() => {
     return getAllowedRegistriesFromUser(user);
@@ -73,10 +72,6 @@ export default function DashboardPage() {
       variant: "warning",
     });
 
-    /**
-     * Limpia el state de navegación para evitar que el aviso
-     * se repita al refrescar o volver a renderizar el dashboard.
-     */
     navigate(pathname, {
       replace: true,
       state: {},
@@ -102,6 +97,14 @@ export default function DashboardPage() {
         replace: true,
       });
     }
+  }
+
+  function handleViewProfile() {
+    navigate(`${routes.profile}?mode=view`);
+  }
+
+  function handleUpdateProfile() {
+    navigate(`${routes.profile}?mode=edit`);
   }
 
   function handleSelectRegistry(route) {
@@ -159,10 +162,11 @@ export default function DashboardPage() {
       >
         <DashboardHero
           displayName={displayName}
-          role={role}
           registriesCount={availableRegistries.length}
           loggingOut={loggingOut}
           onLogout={handleLogout}
+          onViewProfile={handleViewProfile}
+          onUpdateProfile={handleUpdateProfile}
         />
 
         <DashboardModulesPanel
