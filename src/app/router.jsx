@@ -6,21 +6,30 @@ import routes from "./routes";
 import ProtectedRoute from "./guards/ProtectedRoute";
 import PublicRoute from "./guards/PublicRoute";
 import PendingTwoFactorRoute from "./guards/PendingTwoFactorRoute";
+import PermissionRoute from "./guards/PermissionRoute";
+
+import { REGISTRY_ACCESS_RULES } from "../utils/rbac";
 
 const HomePage = lazy(() => import("../modules/landing/pages/HomePage"));
+
 const LoginPage = lazy(() => import("../modules/auth/pages/LoginPage"));
+
 const ForgotPasswordPage = lazy(() =>
   import("../modules/auth/pages/ForgotPasswordPage")
 );
+
 const TwoFactorPage = lazy(() =>
   import("../modules/auth/pages/TwoFactorPage")
 );
+
 const DashboardPage = lazy(() =>
   import("../modules/dashboard/pages/DashboardPage")
 );
+
 const PostLoginWelcomePage = lazy(() =>
   import("../modules/auth/pages/PostLoginWelcomePage")
 );
+
 const MedidasListPage = lazy(() =>
   import("../modules/medidas-proteccion/pages/MedidasListPage")
 );
@@ -64,9 +73,17 @@ function RouteLoadingFallback() {
 
 /**
  * Router principal de la aplicación.
- * Usa lazy loading para dividir el bundle por rutas.
  *
- * @returns {JSX.Element}
+ * Reglas actuales:
+ * - / es público.
+ * - /login y /forgot-password son públicos protegidos contra sesión activa.
+ * - /auth/verificacion-2fa solo permite retos 2FA pendientes.
+ * - /dashboard requiere sesión autenticada.
+ * - /medidas requiere sesión autenticada + permisos del grupo MP.
+ *
+ * Nota:
+ * Aunque el RBAC ya contempla MH, RNCAS y VF, aquí no se agregan rutas
+ * que todavía no existen para evitar romper el build.
  */
 export default function AppRouter() {
   return (
@@ -89,11 +106,22 @@ export default function AppRouter() {
 
           <Route element={<ProtectedRoute />}>
             <Route path={routes.dashboard} element={<DashboardPage />} />
+
             <Route
               path={routes.postLoginWelcome}
               element={<PostLoginWelcomePage />}
             />
-            <Route path={routes.medidas} element={<MedidasListPage />} />
+
+            <Route
+              element={
+                <PermissionRoute
+                  accessRule={REGISTRY_ACCESS_RULES.medidasProteccion}
+                  redirectTo={routes.dashboard}
+                />
+              }
+            >
+              <Route path={routes.medidas} element={<MedidasListPage />} />
+            </Route>
           </Route>
 
           <Route path="*" element={<Navigate to={routes.root} replace />} />

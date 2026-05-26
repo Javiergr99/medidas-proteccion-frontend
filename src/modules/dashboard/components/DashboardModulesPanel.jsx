@@ -56,8 +56,8 @@ export default function DashboardModulesPanel({ registries, onSelectRegistry }) 
               lineHeight: 1.5,
             }}
           >
-            Los accesos disponibles se muestran de acuerdo con tu perfil y
-            privilegios registrados.
+            Los accesos disponibles se muestran de acuerdo con los grupos,
+            módulos y acciones asignados a tu perfil.
           </Typography>
         </Box>
 
@@ -117,6 +117,12 @@ DashboardModulesPanel.propTypes = {
       description: PropTypes.string.isRequired,
       icon: PropTypes.node.isRequired,
       route: PropTypes.string.isRequired,
+      groupId: PropTypes.string,
+      groupCode: PropTypes.string,
+      groupDescription: PropTypes.string,
+      modulesCount: PropTypes.number,
+      actionsCount: PropTypes.number,
+      grantedActions: PropTypes.arrayOf(PropTypes.string),
     })
   ).isRequired,
   onSelectRegistry: PropTypes.func.isRequired,
@@ -141,7 +147,7 @@ function EmptyRegistryState() {
           mb: 0.8,
         }}
       >
-        No hay registros asociados
+        No hay módulos asociados
       </Typography>
 
       <Typography
@@ -154,8 +160,8 @@ function EmptyRegistryState() {
           mx: "auto",
         }}
       >
-        Tu cuenta aún no tiene módulos asignados. Cuando el backend entregue los
-        privilegios reales del usuario, este listado se llenará automáticamente.
+        Tu cuenta aún no tiene grupos, módulos o acciones asignadas. Contacta a
+        un administrador para solicitar los permisos correspondientes.
       </Typography>
     </Box>
   );

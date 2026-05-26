@@ -1,5 +1,6 @@
 const STORAGE_KEYS = {
   token: "token",
+  refreshToken: "refresh_token",
   tokenType: "token_type",
   user: "auth_user",
   rememberedUser: "remember_user",
@@ -109,21 +110,29 @@ function readPendingTwoFactorChallengeFromStorage(key) {
 
 export function getStoredAuthSession() {
   const token = localStorage.getItem(STORAGE_KEYS.token);
+  const refreshToken = localStorage.getItem(STORAGE_KEYS.refreshToken);
   const tokenType = localStorage.getItem(STORAGE_KEYS.tokenType);
   const user = safeJsonParse(localStorage.getItem(STORAGE_KEYS.user), null);
 
   return {
     token,
+    refreshToken,
     tokenType,
     user,
   };
 }
 
-export function persistAuthSession({ token, tokenType, user }) {
+export function persistAuthSession({ token, refreshToken, tokenType, user }) {
   if (token) {
     localStorage.setItem(STORAGE_KEYS.token, token);
   } else {
     localStorage.removeItem(STORAGE_KEYS.token);
+  }
+
+  if (refreshToken) {
+    localStorage.setItem(STORAGE_KEYS.refreshToken, refreshToken);
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.refreshToken);
   }
 
   if (tokenType) {
@@ -141,6 +150,7 @@ export function persistAuthSession({ token, tokenType, user }) {
 
 export function clearAuthSession() {
   localStorage.removeItem(STORAGE_KEYS.token);
+  localStorage.removeItem(STORAGE_KEYS.refreshToken);
   localStorage.removeItem(STORAGE_KEYS.tokenType);
   localStorage.removeItem(STORAGE_KEYS.user);
 }

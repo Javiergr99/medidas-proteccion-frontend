@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Box } from "@mui/material";
+import { useSnackbar } from "notistack";
 
 import routes from "../../../app/routes";
 import { useAuth } from "../../../hooks/useAuth";
@@ -14,13 +14,36 @@ import {
   getStoredDashboardUser,
 } from "../utils/dashboard.utils";
 
+function getAccessDeniedMessage(deniedGroupCode) {
+  const groupLabels = {
+    MP: "Registro de Medidas de Protección",
+    MH: "Registro de Movilidad Humana",
+    RNCAS: "Registro Nacional de Centros de Asistencia Social",
+    VF: "Registro del Derecho a Vivir en Familia",
+  };
+
+  const moduleName = groupLabels[deniedGroupCode];
+
+  if (moduleName) {
+    return `No tienes permisos suficientes para acceder a ${moduleName}.`;
+  }
+
+  return "No tienes permisos suficientes para acceder a ese módulo.";
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { pathname, state: routeState } = useLocation();
+  const { enqueueSnackbar } = useSnackbar();
+  const { logout, user: authUser } = useAuth();
 
   const [loggingOut, setLoggingOut] = useState(false);
 
-  const user = useMemo(() => getStoredDashboardUser(), []);
+  const accessDeniedHandledRef = useRef("");
+
+  const user = useMemo(() => {
+    return authUser || getStoredDashboardUser();
+  }, [authUser]);
 
   const displayName = useMemo(() => getDashboardDisplayName(user), [user]);
   const role = useMemo(() => getDashboardRoleLabel(user), [user]);
@@ -29,15 +52,56 @@ export default function DashboardPage() {
     return getAllowedRegistriesFromUser(user);
   }, [user]);
 
-  function handleLogout() {
+  const accessDenied = Boolean(routeState?.accessDenied);
+  const deniedGroupCode = routeState?.deniedGroupCode || "";
+  const deniedFrom = routeState?.from || "";
+
+  useEffect(() => {
+    if (!accessDenied) {
+      return;
+    }
+
+    const accessDeniedKey = `${deniedGroupCode}:${deniedFrom}`;
+
+    if (accessDeniedHandledRef.current === accessDeniedKey) {
+      return;
+    }
+
+    accessDeniedHandledRef.current = accessDeniedKey;
+
+    enqueueSnackbar(getAccessDeniedMessage(deniedGroupCode), {
+      variant: "warning",
+    });
+
+    /**
+     * Limpia el state de navegación para evitar que el aviso
+     * se repita al refrescar o volver a renderizar el dashboard.
+     */
+    navigate(pathname, {
+      replace: true,
+      state: {},
+    });
+  }, [
+    accessDenied,
+    deniedFrom,
+    deniedGroupCode,
+    enqueueSnackbar,
+    navigate,
+    pathname,
+  ]);
+
+  async function handleLogout() {
     if (loggingOut) return;
 
     setLoggingOut(true);
-    logout();
 
-    navigate(routes.login, {
-      replace: true,
-    });
+    try {
+      await logout();
+    } finally {
+      navigate(routes.login, {
+        replace: true,
+      });
+    }
   }
 
   function handleSelectRegistry(route) {

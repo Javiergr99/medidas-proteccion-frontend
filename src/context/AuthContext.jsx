@@ -20,6 +20,7 @@ import {
 import {
   clearTwoFactorTempSession,
   getTwoFactorTempSession,
+  logoutRequest,
   saveTwoFactorTempSession,
 } from "../modules/auth/services/auth.service";
 
@@ -62,12 +63,12 @@ function normalizeTwoFactorChallenge(challenge) {
  * Construye el estado inicial de autenticación.
  *
  * Lee:
- * - Sesión final: token + auth_user.
+ * - Sesión final: access token + refresh token + auth_user.
  * - Reto 2FA persistido.
  * - Respaldo temporal 2FA: temp_2fa_user_id + temp_2fa_status.
  */
 function buildInitialAuthState() {
-  const { token, tokenType, user } = getStoredAuthSession();
+  const { token, refreshToken, tokenType, user } = getStoredAuthSession();
 
   const storedPendingTwoFactor = normalizeTwoFactorChallenge(
     getPendingTwoFactorChallenge()
@@ -94,6 +95,7 @@ function buildInitialAuthState() {
 
   return {
     token,
+    refreshToken,
     tokenType,
     user,
     pendingTwoFactor,
@@ -111,29 +113,32 @@ export function AuthProvider({ children }) {
    * Se llama después de:
    * - POST /enable
    * - POST /login/2fa
-   *
-   * Importante:
-   * Aquí ya debe existir access_token.
+   * - POST /refresh
    */
-  const completeLogin = useCallback(({ token, tokenType, user }) => {
-    persistAuthSession({
-      token,
-      tokenType: tokenType || "bearer",
-      user: user || null,
-    });
+  const completeLogin = useCallback(
+    ({ token, refreshToken, tokenType, user }) => {
+      persistAuthSession({
+        token,
+        refreshToken,
+        tokenType: tokenType || "bearer",
+        user: user || null,
+      });
 
-    clearPendingTwoFactorChallenge();
-    clearTwoFactorTempSession();
+      clearPendingTwoFactorChallenge();
+      clearTwoFactorTempSession();
 
-    setAuthState({
-      token,
-      tokenType: tokenType || "bearer",
-      user: user || null,
-      pendingTwoFactor: null,
-      isAuthenticated: Boolean(token),
-      isPendingTwoFactor: false,
-    });
-  }, []);
+      setAuthState({
+        token,
+        refreshToken: refreshToken || null,
+        tokenType: tokenType || "bearer",
+        user: user || null,
+        pendingTwoFactor: null,
+        isAuthenticated: Boolean(token),
+        isPendingTwoFactor: false,
+      });
+    },
+    []
+  );
 
   /**
    * Inicia el reto 2FA.
@@ -152,6 +157,7 @@ export function AuthProvider({ children }) {
     if (!normalizedChallenge) {
       setAuthState({
         token: null,
+        refreshToken: null,
         tokenType: null,
         user: null,
         pendingTwoFactor: null,
@@ -171,6 +177,7 @@ export function AuthProvider({ children }) {
 
     setAuthState({
       token: null,
+      refreshToken: null,
       tokenType: null,
       user: null,
       pendingTwoFactor: normalizedChallenge,
@@ -233,9 +240,9 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
-   * Cierra sesión completa.
+   * Limpia la sesión local.
    */
-  const logout = useCallback(() => {
+  const clearLocalSession = useCallback(() => {
     clearStoredAuthSession();
     clearPendingTwoFactorChallenge();
     clearTwoFactorTempSession();
@@ -243,6 +250,7 @@ export function AuthProvider({ children }) {
 
     setAuthState({
       token: null,
+      refreshToken: null,
       tokenType: null,
       user: null,
       pendingTwoFactor: null,
@@ -250,6 +258,28 @@ export function AuthProvider({ children }) {
       isPendingTwoFactor: false,
     });
   }, []);
+
+  /**
+   * Cierra sesión completa.
+   *
+   * Intenta invalidar el refresh_token en backend.
+   * Si backend falla, de todos modos limpia frontend local.
+   */
+  const logout = useCallback(async () => {
+    const { refreshToken } = getStoredAuthSession();
+
+    try {
+      if (refreshToken) {
+        await logoutRequest({
+          refreshToken,
+        });
+      }
+    } catch (error) {
+      console.warn("No fue posible cerrar sesión en backend:", error);
+    } finally {
+      clearLocalSession();
+    }
+  }, [clearLocalSession]);
 
   const value = useMemo(
     () => ({
@@ -259,6 +289,7 @@ export function AuthProvider({ children }) {
       startTwoFactorChallenge,
       updatePendingTwoFactorChallenge,
       clearTwoFactorChallenge,
+      clearLocalSession,
       logout,
     }),
     [
@@ -267,6 +298,7 @@ export function AuthProvider({ children }) {
       startTwoFactorChallenge,
       updatePendingTwoFactorChallenge,
       clearTwoFactorChallenge,
+      clearLocalSession,
       logout,
     ]
   );

@@ -93,6 +93,7 @@ export function getAuthUserDisplayName(user) {
  * Aplica para:
  * - POST /enable
  * - POST /login/2fa
+ * - POST /refresh
  */
 export function normalizeFinalSession(payload) {
   const data = unwrapPayload(payload);
@@ -107,11 +108,18 @@ export function normalizeFinalSession(payload) {
     return null;
   }
 
+  const refreshToken = pickFirstValue(
+    data?.refresh_token,
+    data?.refreshToken,
+    data?.refresh
+  );
+
   const tokenType =
     pickFirstValue(data?.token_type, data?.tokenType) || "bearer";
 
   return {
     token,
+    refreshToken,
     tokenType,
   };
 }

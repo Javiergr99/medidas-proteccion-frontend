@@ -21,6 +21,8 @@ import {
   getTwoFactorTempSession,
   saveAuthToken,
   saveAuthUser,
+  saveRefreshToken,
+  saveTokenType,
   verifyTwoFactorRequest,
 } from "../services/auth.service";
 
@@ -241,7 +243,15 @@ export function useTwoFactorFlow() {
       throw new Error("No se recibió un token válido del backend.");
     }
 
+    if (!finalSession?.refreshToken) {
+      console.warn(
+        "El backend no devolvió refresh_token. El access_token funcionará, pero la sesión no podrá renovarse automáticamente."
+      );
+    }
+
     saveAuthToken(finalSession.token);
+    saveRefreshToken(finalSession.refreshToken);
+    saveTokenType(finalSession.tokenType || "bearer");
 
     let currentUser = null;
 
@@ -258,6 +268,7 @@ export function useTwoFactorFlow() {
 
     completeLogin({
       token: finalSession.token,
+      refreshToken: finalSession.refreshToken,
       tokenType: finalSession.tokenType || "bearer",
       user: currentUser,
     });
@@ -270,12 +281,9 @@ export function useTwoFactorFlow() {
       variant: "success",
     });
 
-    navigate(
-      routes.postLoginWelcome || routes.dashboard || routes.registros || "/",
-      {
-        replace: true,
-      }
-    );
+    navigate(routes.postLoginWelcome || routes.dashboard || "/", {
+      replace: true,
+    });
   }
 
   async function handleSubmit(event) {

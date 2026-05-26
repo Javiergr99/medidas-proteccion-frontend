@@ -1,4 +1,11 @@
 import { registryCatalog } from "../data/registryCatalog";
+import {
+  findPermissionGroup,
+  getActionNamesFromGroup,
+  getModulesFromGroup,
+  getPermissionGroups,
+  hasRegistryAccess,
+} from "../../../utils/rbac";
 
 /**
  * Lee el usuario autenticado desde localStorage.
@@ -12,7 +19,7 @@ export function getStoredDashboardUser() {
 }
 
 /**
- * Normaliza texto para comparar claves, nombres o códigos de registros.
+ * Normaliza texto para comparar claves, nombres o códigos.
  */
 function normalizeText(value) {
   return String(value || "")
@@ -23,139 +30,163 @@ function normalizeText(value) {
 }
 
 /**
- * Busca un registro dentro del catálogo visual local.
+ * Busca el grupo real del backend para un registro del catálogo.
+ *
+ * Primero intenta por groupCode directo:
+ * - MP
+ * - MH
+ * - RNCAS
+ * - VF
+ *
+ * Luego intenta por aliases/descripción para soportar variaciones.
  */
-function getRegistryFromCatalog(value) {
-  const normalizedValue = normalizeText(value);
+function getRegistryPermissionGroup(user, registry) {
+  const directGroup = findPermissionGroup(user, registry.groupCode);
 
-  if (!normalizedValue) return null;
+  if (directGroup) {
+    return directGroup;
+  }
+
+  const groups = getPermissionGroups(user);
+
+  const registryCandidates = [
+    registry.groupCode,
+    registry.code,
+    registry.key,
+    registry.title,
+    registry.subtitle,
+    ...(registry.aliases || []),
+  ].map(normalizeText);
 
   return (
-    Object.values(registryCatalog).find((registry) => {
-      const normalizedKey = normalizeText(registry.key);
-      const normalizedCode = normalizeText(registry.code);
-      const normalizedTitle = normalizeText(registry.title);
-      const normalizedSubtitle = normalizeText(registry.subtitle);
+    groups.find((group) => {
+      const groupCandidates = [
+        group?.nombre,
+        group?.name,
+        group?.codigo,
+        group?.code,
+        group?.clave,
+        group?.descripcion,
+        group?.description,
+      ].map(normalizeText);
 
-      const normalizedAliases = registry.aliases.map((alias) =>
-        normalizeText(alias)
-      );
-
-      return (
-        normalizedValue === normalizedKey ||
-        normalizedValue === normalizedCode ||
-        normalizedValue === normalizedTitle ||
-        normalizedValue === normalizedSubtitle ||
-        normalizedAliases.includes(normalizedValue)
+      return groupCandidates.some((candidate) =>
+        registryCandidates.includes(candidate)
       );
     }) || null
   );
 }
 
 /**
- * Obtiene el valor candidato de registro desde distintas formas posibles
- * que puede devolver el backend.
+ * Extrae metadatos útiles del grupo para futuras pantallas.
  */
-function getRegistryCandidateValue(item) {
-  if (!item) return "";
+function buildRegistryAccessFromGroup({ registry, group, canOpen }) {
+  const modules = getModulesFromGroup(group);
+  const actionNames = getActionNamesFromGroup(group);
 
-  if (typeof item === "string" || typeof item === "number") {
-    return item;
-  }
+  return {
+    ...registry,
+    groupId: group?.id || null,
+    groupCode: group?.nombre || registry.groupCode || registry.code,
+    groupDescription: group?.descripcion || registry.title,
+    modulesCount: modules.length,
+    actionsCount: actionNames.size,
+    grantedActions: Array.from(actionNames),
 
-  return (
-    item.key ||
-    item.codigo ||
-    item.code ||
-    item.clave ||
-    item.acro ||
-    item.nombre ||
-    item.name ||
-    item.registro_codigo ||
-    item.registroCode ||
-    item.registro_key ||
-    item.registroKey ||
-    item.registro?.key ||
-    item.registro?.codigo ||
-    item.registro?.code ||
-    item.registro?.clave ||
-    item.registro?.acro ||
-    item.registro?.nombre ||
-    item.registro?.name ||
-    ""
-  );
+    /**
+     * Indica si además de estar asociado al grupo,
+     * cumple la regla fina para abrir la ruta.
+     *
+     * Por ahora la tarjeta se muestra por pertenencia al grupo.
+     * La ruta interna sigue protegida por PermissionRoute.
+     */
+    canOpen,
+  };
 }
 
 /**
- * Valida si un acceso está activo.
- */
-function isActiveAccess(item) {
-  if (!item || typeof item !== "object") return true;
-
-  if (typeof item.is_active === "boolean") return item.is_active;
-  if (typeof item.isActive === "boolean") return item.isActive;
-  if (typeof item.activo === "boolean") return item.activo;
-  if (typeof item.active === "boolean") return item.active;
-
-  return true;
-}
-
-/**
- * Extrae los registros permitidos desde el usuario autenticado.
+ * Extrae los registros permitidos/asociados desde el usuario autenticado.
  *
- * No asigna tarjetas manualmente.
- * Solo muestra registros si vienen en la respuesta del backend.
+ * Regla:
+ * - El dashboard muestra tarjetas por pertenencia a user.permisos.grupos.
+ * - No oculta la tarjeta solo porque falte una acción específica.
+ * - Las acciones específicas se validan al entrar a la ruta con PermissionRoute.
  */
 export function getAllowedRegistriesFromUser(user) {
-  const possibleAccessLists = [
-    user?.registros,
-    user?.registros_disponibles,
-    user?.registrosDisponibles,
-    user?.accesos,
-    user?.accesses,
-    user?.user_access,
-    user?.userAccess,
-    user?.permissions?.registros,
-    user?.permisos?.registros,
-  ];
+  if (!user) return [];
 
-  const rawItems = possibleAccessLists.find((list) => Array.isArray(list)) || [];
+  const allowedRegistries = [];
 
-  const registriesMap = new Map();
+  for (const registry of Object.values(registryCatalog)) {
+    const group = getRegistryPermissionGroup(user, registry);
 
-  rawItems.forEach((item) => {
-    if (!isActiveAccess(item)) return;
-
-    const candidateValue = getRegistryCandidateValue(item);
-    const registry = getRegistryFromCatalog(candidateValue);
-
-    if (registry) {
-      registriesMap.set(registry.key, registry);
+    if (!group) {
+      continue;
     }
-  });
 
-  return Array.from(registriesMap.values());
+    const canOpen = hasRegistryAccess(user, registry.accessRule);
+
+    allowedRegistries.push(
+      buildRegistryAccessFromGroup({
+        registry,
+        group,
+        canOpen,
+      })
+    );
+  }
+
+  return allowedRegistries;
 }
 
 /**
  * Obtiene el nombre visible del usuario.
  */
 export function getDashboardDisplayName(user) {
+  const fullName = [
+    user?.nombre,
+    user?.primer_apellido,
+    user?.segundo_apellido,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
   return (
     user?.nombre_completo ||
     user?.nombreCompleto ||
-    user?.nombre ||
+    fullName ||
     user?.name ||
+    user?.correo_electronico ||
+    user?.email ||
     "Usuario"
   );
 }
 
 /**
- * Obtiene el rol visible del usuario.
+ * Obtiene una etiqueta visible del perfil/contexto institucional.
  */
 export function getDashboardRoleLabel(user) {
   if (typeof user?.rol === "string") return user.rol;
   if (typeof user?.role === "string") return user.role;
+
+  const instance = user?.instancia?.siglas || user?.instancia?.nombre;
+  const status = user?.estatus?.nombre;
+
+  if (instance && status) {
+    return `${instance} · ${status}`;
+  }
+
+  if (instance) {
+    return instance;
+  }
+
+  const groups = getPermissionGroups(user)
+    .map((group) => group?.nombre)
+    .filter(Boolean);
+
+  if (groups.length > 0) {
+    return groups.join(", ");
+  }
 
   return (
     user?.rol?.nombre ||

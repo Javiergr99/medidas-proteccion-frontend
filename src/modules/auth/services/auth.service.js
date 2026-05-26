@@ -2,6 +2,8 @@ import api from "../../../api/http";
 import endpoints from "../../../api/endpoints";
 
 const TOKEN_KEY = "token";
+const REFRESH_TOKEN_KEY = "refresh_token";
+const TOKEN_TYPE_KEY = "token_type";
 const USER_KEY = "auth_user";
 
 const TEMP_2FA_USER_ID_KEY = "temp_2fa_user_id";
@@ -27,18 +29,58 @@ const VALID_TEMP_2FA_STATUSES = ["pending_setup", "pending_2fa"];
  * Este token solo debe venir de:
  * - POST /enable
  * - POST /login/2fa
+ * - POST /refresh
  */
 export function saveAuthToken(token) {
-  if (!token) return;
-  localStorage.setItem(TOKEN_KEY, token);
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+    return;
+  }
+
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+/**
+ * Guarda el refresh token rotatorio actual.
+ */
+export function saveRefreshToken(refreshToken) {
+  if (refreshToken) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    return;
+  }
+
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+/**
+ * Obtiene el refresh token actual.
+ */
+export function getRefreshToken() {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+/**
+ * Guarda el tipo de token.
+ */
+export function saveTokenType(tokenType = "bearer") {
+  if (tokenType) {
+    localStorage.setItem(TOKEN_TYPE_KEY, tokenType);
+    return;
+  }
+
+  localStorage.removeItem(TOKEN_TYPE_KEY);
 }
 
 /**
  * Guarda el perfil del usuario autenticado.
  */
 export function saveAuthUser(user) {
-  if (!user) return;
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  if (user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    return;
+  }
+
+  localStorage.removeItem(USER_KEY);
 }
 
 /**
@@ -46,6 +88,8 @@ export function saveAuthUser(user) {
  */
 export function clearAuthSession() {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(TOKEN_TYPE_KEY);
   localStorage.removeItem(USER_KEY);
 }
 
@@ -239,15 +283,10 @@ export async function fetchTwoFactorSetupQr({ userId }) {
  *
  * Se usa SOLO en la primera configuración 2FA.
  *
- * El backend espera:
- * {
- *   "user_id": "string",
- *   "code": "123456"
- * }
- *
  * Devuelve:
  * {
  *   "access_token": "...",
+ *   "refresh_token": "...",
  *   "token_type": "bearer"
  * }
  */
@@ -273,15 +312,10 @@ export async function enableTwoFactorRequest({ userId, code }) {
  *
  * Se usa cuando el usuario ya tiene 2FA activo.
  *
- * El backend espera:
- * {
- *   "user_id": "string",
- *   "code": "123456"
- * }
- *
  * Devuelve:
  * {
  *   "access_token": "...",
+ *   "refresh_token": "...",
  *   "token_type": "bearer"
  * }
  */
@@ -291,6 +325,48 @@ export async function verifyTwoFactorRequest({ userId, code }) {
     {
       user_id: normalizeUserId(userId),
       code: normalizeCode(code),
+    },
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  return response.data;
+}
+
+/**
+ * POST /refresh
+ *
+ * Usa refresh_token rotatorio para renovar access_token.
+ */
+export async function refreshSessionRequest({ refreshToken }) {
+  const response = await api.post(
+    endpoints.auth.refresh,
+    {
+      refresh_token: refreshToken || "",
+    },
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  return response.data;
+}
+
+/**
+ * POST /logout
+ *
+ * Invalida el refresh_token actual en backend.
+ */
+export async function logoutRequest({ refreshToken }) {
+  const response = await api.post(
+    endpoints.auth.logout,
+    {
+      refresh_token: refreshToken || "",
     },
     {
       headers: {

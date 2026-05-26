@@ -4,17 +4,23 @@ import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded
 import HealthAndSafetyRoundedIcon from "@mui/icons-material/HealthAndSafetyRounded";
 
 import routes from "../../../app/routes";
+import { REGISTRY_ACCESS_RULES } from "../../../utils/rbac";
 
 /**
  * Catálogo visual local.
  *
  * Importante:
  * Este catálogo NO asigna permisos.
- * Solo traduce los accesos que vengan del backend a tarjetas visuales.
+ * Solo traduce los grupos/acciones que vengan del backend a tarjetas visuales.
+ *
+ * Backend actual:
+ * permisos.grupos[].modulos[].acciones[].nombre
  */
 export const registryCatalog = {
   rncas: {
     key: "rncas",
+    groupCode: REGISTRY_ACCESS_RULES.rncas.groupCode,
+    accessRule: REGISTRY_ACCESS_RULES.rncas,
     aliases: [
       "rncas",
       "registro nacional de centros de asistencia social",
@@ -32,14 +38,17 @@ export const registryCatalog = {
 
   rmh: {
     key: "rmh",
+    groupCode: REGISTRY_ACCESS_RULES.movilidadHumana.groupCode,
+    accessRule: REGISTRY_ACCESS_RULES.movilidadHumana,
     aliases: [
+      "mh",
       "rmh",
       "movilidad humana",
       "registro de movilidad humana",
       "registro de ninas ninos y adolescentes en movilidad humana",
       "registro de niñas niños y adolescentes en movilidad humana",
     ],
-    code: "RMH",
+    code: "MH",
     title: "Registro de Niñas, Niños y Adolescentes en Movilidad Humana",
     subtitle: "Movilidad humana",
     description:
@@ -50,13 +59,17 @@ export const registryCatalog = {
 
   dvf: {
     key: "dvf",
+    groupCode: REGISTRY_ACCESS_RULES.vivirEnFamilia.groupCode,
+    accessRule: REGISTRY_ACCESS_RULES.vivirEnFamilia,
     aliases: [
+      "vf",
       "dvf",
       "vivir en familia",
       "derecho a vivir en familia",
+      "registro de derecho a vivir en familia",
       "registro del derecho a vivir en familia",
     ],
-    code: "DVF",
+    code: "VF",
     title: "Registro del Derecho a Vivir en Familia",
     subtitle: "Derecho a vivir en familia",
     description:
@@ -67,7 +80,10 @@ export const registryCatalog = {
 
   rmp: {
     key: "rmp",
+    groupCode: REGISTRY_ACCESS_RULES.medidasProteccion.groupCode,
+    accessRule: REGISTRY_ACCESS_RULES.medidasProteccion,
     aliases: [
+      "mp",
       "rmp",
       "medidas",
       "medidas de proteccion",
@@ -75,7 +91,7 @@ export const registryCatalog = {
       "registro de medidas de proteccion",
       "registro de medidas de protección",
     ],
-    code: "RMP",
+    code: "MP",
     title: "Registro de Medidas de Protección",
     subtitle: "Medidas de protección",
     description:

@@ -5,11 +5,19 @@ import {
   clearPendingTwoFactorChallenge,
   clearPostLoginWelcomeFlag,
   getStoredAuthSession,
+  persistAuthSession,
 } from "../utils/storage";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-const PUBLIC_AUTH_ENDPOINTS = ["/login", "/setup", "/enable", "/login/2fa"];
+const PUBLIC_AUTH_ENDPOINTS = [
+  "/login",
+  "/setup",
+  "/enable",
+  "/login/2fa",
+  "/refresh",
+  "/logout",
+];
 
 const AUTH_FLOW_PAGES = ["/login", "/auth/verificacion-2fa"];
 
@@ -18,6 +26,8 @@ const TEMP_2FA_STORAGE_KEYS = [
   "temp_2fa_status",
   "temp_2fa_expires_at",
 ];
+
+let refreshRequestPromise = null;
 
 const api = axios.create({
   baseURL: API_URL,
@@ -46,10 +56,7 @@ function getRequestPathname(url = "") {
 /**
  * Indica si una petición pertenece al flujo público de autenticación.
  *
- * Estos endpoints NO deben recibir Authorization Bearer, porque:
- * - /login aún no tiene token final.
- * - /setup, /enable y /login/2fa usan user_id temporal + código.
- * - Un token viejo en localStorage puede provocar comportamientos confusos.
+ * Estos endpoints NO deben recibir Authorization Bearer.
  *
  * @param {string} url
  * @returns {boolean}
@@ -80,6 +87,63 @@ function isCurrentAuthFlowPage() {
   return AUTH_FLOW_PAGES.includes(window.location.pathname);
 }
 
+function normalizeRefreshSessionPayload(payload) {
+  const token =
+    payload?.access_token || payload?.token || payload?.accessToken || "";
+
+  const refreshToken =
+    payload?.refresh_token || payload?.refreshToken || payload?.refresh || "";
+
+  const tokenType = payload?.token_type || payload?.tokenType || "bearer";
+
+  if (!token) {
+    return null;
+  }
+
+  return {
+    token,
+    refreshToken,
+    tokenType,
+  };
+}
+
+function clearFrontendAuthState() {
+  clearAuthSession();
+  clearPendingTwoFactorChallenge();
+  clearPostLoginWelcomeFlag();
+  clearLocalTwoFactorTempSession();
+}
+
+function redirectToLoginIfNeeded() {
+  if (!isCurrentAuthFlowPage()) {
+    window.location.replace("/login");
+  }
+}
+
+async function requestTokenRefresh(refreshToken) {
+  if (!refreshRequestPromise) {
+    refreshRequestPromise = api
+      .post(
+        "/refresh",
+        {
+          refresh_token: refreshToken || "",
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          skipAuthRefresh: true,
+        }
+      )
+      .then((response) => normalizeRefreshSessionPayload(response.data))
+      .finally(() => {
+        refreshRequestPromise = null;
+      });
+  }
+
+  return refreshRequestPromise;
+}
+
 api.interceptors.request.use(
   (config) => {
     const { token } = getStoredAuthSession();
@@ -95,31 +159,76 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const status = error?.response?.status;
-    const requestUrl = error?.config?.url || "";
+    const originalRequest = error?.config || {};
+    const requestUrl = originalRequest.url || "";
 
     const isAuthRequest = isPublicAuthEndpoint(requestUrl);
+    const shouldSkipRefresh = Boolean(originalRequest.skipAuthRefresh);
+    const alreadyRetried = Boolean(originalRequest.authRetry);
 
     /**
-     * Si ocurre 401 en rutas protegidas:
-     * - limpiamos sesión final
-     * - limpiamos reto 2FA pendiente
-     * - limpiamos bandera de bienvenida
-     * - limpiamos respaldo temporal 2FA
+     * 401 en rutas protegidas:
+     * - Primero intenta renovar access_token con refresh_token.
+     * - Si refresh falla, limpia sesión y redirige a login.
      *
-     * No redirigimos automáticamente si el error ocurrió dentro del flujo auth,
-     * porque login/2FA deben poder mostrar su propio error.
+     * Esto cubre:
+     * - access_token expirado
+     * - token_version invalidado por backend
+     * - kill switch por cambios críticos de usuario/permisos
      */
-    if (status === 401 && !isAuthRequest) {
-      clearAuthSession();
-      clearPendingTwoFactorChallenge();
-      clearPostLoginWelcomeFlag();
-      clearLocalTwoFactorTempSession();
+    if (
+      status === 401 &&
+      !isAuthRequest &&
+      !shouldSkipRefresh &&
+      !alreadyRetried
+    ) {
+      const { refreshToken, user } = getStoredAuthSession();
 
-      if (!isCurrentAuthFlowPage()) {
-        window.location.replace("/login");
+      if (refreshToken) {
+        try {
+          const refreshedSession = await requestTokenRefresh(refreshToken);
+
+          if (!refreshedSession?.token) {
+            throw new Error("No se recibió un access_token válido en /refresh.");
+          }
+
+          const nextRefreshToken =
+            refreshedSession.refreshToken || refreshToken;
+
+          persistAuthSession({
+            token: refreshedSession.token,
+            refreshToken: nextRefreshToken,
+            tokenType: refreshedSession.tokenType || "bearer",
+            user: user || null,
+          });
+
+          originalRequest.authRetry = true;
+          originalRequest.headers = originalRequest.headers || {};
+          originalRequest.headers.Authorization = `Bearer ${refreshedSession.token}`;
+
+          return api(originalRequest);
+        } catch (refreshError) {
+          clearFrontendAuthState();
+          redirectToLoginIfNeeded();
+
+          return Promise.reject(refreshError);
+        }
       }
+
+      clearFrontendAuthState();
+      redirectToLoginIfNeeded();
+    }
+
+    /**
+     * 403 en rutas protegidas:
+     * Puede representar usuario bloqueado, inactivo o inactividad > 90 días.
+     * En login/2FA se deja pasar para que la pantalla muestre el mensaje.
+     */
+    if (status === 403 && !isAuthRequest) {
+      clearFrontendAuthState();
+      redirectToLoginIfNeeded();
     }
 
     return Promise.reject(error);
