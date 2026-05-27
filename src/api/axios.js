@@ -10,6 +10,9 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
+const AUTH_API_URL =
+  import.meta.env.VITE_AUTH_API_URL || "http://127.0.0.1:8001";
+
 const PUBLIC_AUTH_ENDPOINTS = [
   "/login",
   "/setup",
@@ -41,6 +44,7 @@ const api = axios.create({
  * Funciona tanto para:
  * - "/login"
  * - "http://127.0.0.1:8000/login"
+ * - "http://127.0.0.1:8001/login"
  *
  * @param {string} url
  * @returns {string}
@@ -64,6 +68,32 @@ function getRequestPathname(url = "") {
 function isPublicAuthEndpoint(url = "") {
   const pathname = getRequestPathname(url);
   return PUBLIC_AUTH_ENDPOINTS.includes(pathname);
+}
+
+/**
+ * Indica si una petición debe ir al microservicio de autenticación.
+ *
+ * Actualmente auth_service concentra:
+ * - Login
+ * - 2FA
+ * - Refresh token
+ * - Logout
+ * - Perfil del usuario actual
+ * - Administración/catálogo de usuarios y permisos
+ *
+ * @param {string} url
+ * @returns {boolean}
+ */
+function isAuthServiceEndpoint(url = "") {
+  const pathname = getRequestPathname(url);
+
+  return (
+    PUBLIC_AUTH_ENDPOINTS.includes(pathname) ||
+    pathname === "/users" ||
+    pathname === "/users/me" ||
+    pathname === "/users/catalogo-permisos" ||
+    pathname.startsWith("/users/")
+  );
 }
 
 /**
@@ -148,7 +178,12 @@ api.interceptors.request.use(
   (config) => {
     const { token } = getStoredAuthSession();
 
-    if (token && !isPublicAuthEndpoint(config.url)) {
+    const requestUrl = config.url || "";
+    const shouldUseAuthService = isAuthServiceEndpoint(requestUrl);
+
+    config.baseURL = shouldUseAuthService ? AUTH_API_URL : API_URL;
+
+    if (token && !isPublicAuthEndpoint(requestUrl)) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
