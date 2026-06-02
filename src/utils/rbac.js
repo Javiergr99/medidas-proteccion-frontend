@@ -13,20 +13,28 @@ export const MP_ACTIONS = {
   APROBAR_REGISTRO: "MP_APROBAR_REGISTRO",
   DEVOLVER_REGISTRO: "MP_DEVOLVER_REGISTRO",
   EDITAR_DATOS_GENERALES: "MP_EDITAR_DATOS_GENERALES",
+  EDITAR_IMPRESION_DIAGNOSTICA: "MP_EDITAR_IMPRESION_DIAGNOSTICA",
+  EDITAR_INTERVENCION: "MP_EDITAR_INTERVENCION",
+  EDITAR_PLAN_RESTITUCION: "MP_EDITAR_PLAN_RESTITUCION",
   EDITAR_MEDIDAS_PROTECCION: "MP_EDITAR_MEDIDAS_PROTECCION",
+  EDITAR_CIERRE_CASO: "MP_EDITAR_CIERRE_CASO",
+};
+
+export const GLOBAL_ACTIONS = {
+  VER_REGISTROS_GLOBAL: "VER_REGISTROS_GLOBAL",
 };
 
 export const REGISTRY_ACCESS_RULES = {
   medidasProteccion: {
     groupCode: RBAC_GROUPS.MEDIDAS_PROTECCION,
+    allowGroupOnly: false,
 
     /**
-     * Regla de entrada al registro:
-     * Si backend asigna solo el grupo MP, la tarjeta y la ruta base deben existir.
-     * Las acciones se validan después dentro del módulo.
+     * Contrato backend MP:
+     * La tarjeta/módulo debe derivarse de si el usuario tiene al menos
+     * una acción del grupo MP. Tener solo el grupo MP ya no basta.
      */
-    allowGroupOnly: true,
-    requiredActions: [],
+    requiredActions: Object.values(MP_ACTIONS),
     fallbackActions: [],
   },
 
@@ -48,6 +56,15 @@ export const REGISTRY_ACCESS_RULES = {
     groupCode: RBAC_GROUPS.VIVIR_EN_FAMILIA,
     allowGroupOnly: true,
     requiredActions: [],
+    fallbackActions: [],
+  },
+};
+
+export const REGISTRY_ROUTE_ACCESS_RULES = {
+  medidasProteccionList: {
+    groupCode: RBAC_GROUPS.MEDIDAS_PROTECCION,
+    allowGroupOnly: false,
+    requiredActions: [MP_ACTIONS.LEER_REGISTRO],
     fallbackActions: [],
   },
 };
@@ -79,8 +96,8 @@ export function getActionsFromModule(module) {
 export function getActionNamesFromGroup(group) {
   const actionNames = new Set();
 
-  for (const module of getModulesFromGroup(group)) {
-    for (const action of getActionsFromModule(module)) {
+  for (const moduleItem of getModulesFromGroup(group)) {
+    for (const action of getActionsFromModule(moduleItem)) {
       const actionName = normalizeActionName(action?.nombre || action?.name);
 
       if (actionName) {
@@ -166,17 +183,10 @@ export function hasPermissionGroupAccess({
     return false;
   }
 
-  /**
-   * Si el usuario pertenece al grupo y la regla permite acceso por grupo,
-   * se autoriza la entrada base al registro.
-   */
   if (allowGroupOnly) {
     return true;
   }
 
-  /**
-   * Si no hay acciones configuradas, basta con pertenecer al grupo.
-   */
   if (!requiredActions.length && !fallbackActions.length) {
     return true;
   }

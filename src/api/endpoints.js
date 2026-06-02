@@ -16,6 +16,17 @@ const endpoints = {
     update: (userId) => `/users/${userId}`,
     catalogPermissions: "/users/catalogo-permisos",
   },
+
+  registros: {
+    list: "/registros/",
+    create: "/registros/",
+    updateDatosGenerales: (registroId) =>
+      `/registros/${registroId}/datos-generales`,
+    enviarRevision: (registroId) =>
+      `/registros/${registroId}/enviar-revision`,
+    aprobar: (registroId) => `/registros/${registroId}/aprobar`,
+    devolver: (registroId) => `/registros/${registroId}/devolver`,
+  },
 };
 
 export default endpoints;

@@ -8,7 +8,7 @@ import PublicRoute from "./guards/PublicRoute";
 import PendingTwoFactorRoute from "./guards/PendingTwoFactorRoute";
 import PermissionRoute from "./guards/PermissionRoute";
 
-import { REGISTRY_ACCESS_RULES } from "../utils/rbac";
+import { REGISTRY_ROUTE_ACCESS_RULES } from "../utils/rbac";
 
 const HomePage = lazy(() => import("../modules/landing/pages/HomePage"));
 
@@ -105,7 +105,7 @@ export default function AppRouter() {
             <Route
               element={
                 <PermissionRoute
-                  accessRule={REGISTRY_ACCESS_RULES.medidasProteccion}
+                  accessRule={REGISTRY_ROUTE_ACCESS_RULES.medidasProteccionList}
                   redirectTo={routes.dashboard}
                 />
               }
