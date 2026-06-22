@@ -2,96 +2,78 @@ import PropTypes from "prop-types";
 import { Box, Button, Stack, Tooltip, Typography } from "@mui/material";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CleaningServicesRoundedIcon from "@mui/icons-material/CleaningServicesRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 
 export default function MedidasListHeader({
-  totalRecords,
-  filteredRecords,
   hasActiveFilters,
   canCreate,
   loading,
-  onBack,
   onCreateRecord,
   onClearFilters,
   onRefresh,
 }) {
   return (
     <Box
+      component="section"
       sx={{
-        borderRadius: { xs: "24px", md: "30px" },
+        borderRadius: { xs: "20px", md: "24px" },
         backgroundColor: "#ffffff",
-        border: "1px solid rgba(15,23,42,0.06)",
-        boxShadow:
-          "0 20px 55px rgba(15,23,42,0.06), inset 0 1px 0 rgba(255,255,255,0.92)",
-        p: { xs: 2.4, sm: 3, md: 3.4 },
+        border: "1px solid rgba(152,152,154,0.16)",
+        boxShadow: "0 10px 28px rgba(19,50,46,0.045)",
+        p: { xs: 2, sm: 2.4, md: 2.7 },
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      <Button
-        startIcon={<ArrowBackRoundedIcon />}
-        onClick={onBack}
+      <Box
         sx={{
-          mb: 2,
-          textTransform: "none",
-          fontWeight: 900,
-          color: "#8f1538",
-          borderRadius: 999,
-          px: 0,
-          "&:hover": {
-            backgroundColor: "transparent",
-            textDecoration: "underline",
-          },
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: 3,
+          background:
+            "linear-gradient(90deg, #611232 0%, #9d2449 48%, #BC955C 100%)",
         }}
-      >
-        Volver al dashboard
-      </Button>
+      />
 
       <Stack
         direction={{ xs: "column", md: "row" }}
         justifyContent="space-between"
         alignItems={{ xs: "flex-start", md: "center" }}
-        spacing={2.4}
+        spacing={2}
       >
-        <Box>
+        <Box sx={{ minWidth: 0 }}>
           <Typography
             component="h1"
             sx={{
+              m: 0,
               fontFamily: "Noto Sans, sans-serif",
               fontWeight: 950,
-              color: "#111827",
-              fontSize: { xs: "1.7rem", sm: "2.05rem", md: "2.35rem" },
-              lineHeight: 1.05,
+              color: "#13322e",
+              fontSize: { xs: "1.45rem", sm: "1.75rem", md: "2rem" },
+              lineHeight: 1.08,
               letterSpacing: "-0.045em",
             }}
           >
-            Listado de Registro de Medidas de Protección
+            Listado de registros
           </Typography>
 
           <Typography
             sx={{
-              mt: 1,
-              maxWidth: 820,
-              color: "#64748b",
+              mt: 0.55,
+              maxWidth: 740,
               fontFamily: "Noto Sans, sans-serif",
-              fontSize: { xs: "0.92rem", md: "0.98rem" },
-              lineHeight: 1.65,
+              color: "#64748b",
+              fontWeight: 650,
+              fontSize: { xs: "0.84rem", md: "0.9rem" },
+              lineHeight: 1.45,
             }}
           >
-            Consulta y filtra los registros recibidos desde el backend. En esta
-            fase los filtros se aplican localmente sobre los expedientes
-            cargados.
+            Consulta, actualiza y da seguimiento a los registros de Medidas de
+            Protección.
           </Typography>
-
-          <Stack
-            direction="row"
-            spacing={1}
-            flexWrap="wrap"
-            sx={{ mt: 1.7, rowGap: 1 }}
-          >
-            <CounterPill label="Registros cargados" value={totalRecords} />
-            <CounterPill label="Resultado actual" value={filteredRecords} />
-          </Stack>
         </Box>
 
         <Stack
@@ -107,16 +89,18 @@ export default function MedidasListHeader({
               startIcon={<AddRoundedIcon />}
               onClick={onCreateRecord}
               sx={{
-                minHeight: 44,
+                minHeight: 42,
                 borderRadius: 999,
                 textTransform: "none",
-                fontWeight: 950,
-                px: 2.2,
-                bgcolor: "#8f1538",
-                boxShadow: "0 12px 24px rgba(143,21,56,0.18)",
+                fontFamily: "Noto Sans, sans-serif",
+                fontWeight: 900,
+                px: 2.15,
+                color: "#ffffff",
+                backgroundColor: "#611232",
+                boxShadow: "0 10px 22px rgba(97,18,50,0.18)",
                 "&:hover": {
-                  bgcolor: "#7a1230",
-                  boxShadow: "0 16px 30px rgba(143,21,56,0.23)",
+                  backgroundColor: "#4d0e28",
+                  boxShadow: "0 12px 26px rgba(97,18,50,0.22)",
                 },
               }}
             >
@@ -130,17 +114,25 @@ export default function MedidasListHeader({
             onClick={onRefresh}
             disabled={loading}
             sx={{
-              minHeight: 44,
+              minHeight: 42,
               borderRadius: 999,
               textTransform: "none",
-              fontWeight: 900,
-              px: 2,
-              color: "#0f4f46",
-              borderColor: "rgba(15,79,70,0.28)",
-              backgroundColor: "rgba(255,255,255,0.72)",
+              fontFamily: "Noto Sans, sans-serif",
+              fontWeight: 850,
+              px: 1.95,
+              color: "#13322e",
+              borderColor: "rgba(19,50,46,0.18)",
+              backgroundColor: "#ffffff",
+              boxShadow: "none",
               "&:hover": {
-                borderColor: "#0f4f46",
-                backgroundColor: "rgba(15,79,70,0.06)",
+                borderColor: "rgba(19,50,46,0.32)",
+                backgroundColor: "rgba(19,50,46,0.035)",
+                boxShadow: "none",
+              },
+              "&.Mui-disabled": {
+                color: "#94a3b8",
+                borderColor: "rgba(148,163,184,0.28)",
+                backgroundColor: "#ffffff",
               },
             }}
           >
@@ -161,17 +153,25 @@ export default function MedidasListHeader({
                 onClick={onClearFilters}
                 disabled={!hasActiveFilters}
                 sx={{
-                  minHeight: 44,
+                  minHeight: 42,
                   borderRadius: 999,
                   textTransform: "none",
-                  fontWeight: 900,
-                  px: 2,
-                  color: "#334155",
-                  borderColor: "rgba(100,116,139,0.25)",
-                  backgroundColor: "rgba(255,255,255,0.72)",
+                  fontFamily: "Noto Sans, sans-serif",
+                  fontWeight: 850,
+                  px: 1.95,
+                  color: "#64748b",
+                  borderColor: "rgba(152,152,154,0.22)",
+                  backgroundColor: "#ffffff",
+                  boxShadow: "none",
                   "&:hover": {
-                    borderColor: "#64748b",
-                    backgroundColor: "rgba(100,116,139,0.06)",
+                    borderColor: "rgba(152,152,154,0.38)",
+                    backgroundColor: "rgba(152,152,154,0.045)",
+                    boxShadow: "none",
+                  },
+                  "&.Mui-disabled": {
+                    color: "#cbd5e1",
+                    borderColor: "rgba(203,213,225,0.32)",
+                    backgroundColor: "#ffffff",
                   },
                 }}
               >
@@ -185,51 +185,11 @@ export default function MedidasListHeader({
   );
 }
 
-function CounterPill({ label, value }) {
-  return (
-    <Box
-      sx={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 0.75,
-        px: 1.3,
-        py: 0.55,
-        borderRadius: 999,
-        backgroundColor: "rgba(248,250,252,0.9)",
-        border: "1px solid rgba(15,23,42,0.07)",
-        color: "#334155",
-        fontFamily: "Noto Sans, sans-serif",
-        fontSize: "0.78rem",
-        fontWeight: 850,
-      }}
-    >
-      <Box
-        component="span"
-        sx={{
-          color: "#8f1538",
-          fontWeight: 950,
-        }}
-      >
-        {value}
-      </Box>
-      {label}
-    </Box>
-  );
-}
-
 MedidasListHeader.propTypes = {
-  totalRecords: PropTypes.number.isRequired,
-  filteredRecords: PropTypes.number.isRequired,
   hasActiveFilters: PropTypes.bool.isRequired,
   canCreate: PropTypes.bool.isRequired,
   loading: PropTypes.bool.isRequired,
-  onBack: PropTypes.func.isRequired,
   onCreateRecord: PropTypes.func.isRequired,
   onClearFilters: PropTypes.func.isRequired,
   onRefresh: PropTypes.func.isRequired,
-};
-
-CounterPill.propTypes = {
-  label: PropTypes.string.isRequired,
-  value: PropTypes.number.isRequired,
 };

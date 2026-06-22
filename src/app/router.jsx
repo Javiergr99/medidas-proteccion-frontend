@@ -8,7 +8,10 @@ import PublicRoute from "./guards/PublicRoute";
 import PendingTwoFactorRoute from "./guards/PendingTwoFactorRoute";
 import PermissionRoute from "./guards/PermissionRoute";
 
-import { REGISTRY_ROUTE_ACCESS_RULES } from "../utils/rbac";
+import {
+  MP_ACTIONS,
+  REGISTRY_ROUTE_ACCESS_RULES,
+} from "../utils/rbac";
 
 const HomePage = lazy(() => import("../modules/landing/pages/HomePage"));
 
@@ -35,6 +38,17 @@ const ProfilePage = lazy(() => import("../modules/profile/pages/ProfilePage"));
 const MedidasListPage = lazy(() =>
   import("../modules/medidas-proteccion/pages/MedidasListPage")
 );
+
+const MedidasCreatePage = lazy(() =>
+  import("../modules/medidas-proteccion/pages/MedidasCreatePage")
+);
+
+const medidasCreateAccessRule = {
+  groupCode: "MP",
+  allowGroupOnly: false,
+  requiredActions: [MP_ACTIONS.CREAR_REGISTRO],
+  fallbackActions: [],
+};
 
 function RouteLoadingFallback() {
   return (
@@ -82,6 +96,7 @@ export default function AppRouter() {
 
           <Route element={<PublicRoute />}>
             <Route path={routes.login} element={<LoginPage />} />
+
             <Route
               path={routes.forgotPassword}
               element={<ForgotPasswordPage />}
@@ -93,14 +108,14 @@ export default function AppRouter() {
           </Route>
 
           <Route element={<ProtectedRoute />}>
-            <Route path={routes.dashboard} element={<DashboardPage />} />
-
-            <Route path={routes.profile} element={<ProfilePage />} />
-
             <Route
               path={routes.postLoginWelcome}
               element={<PostLoginWelcomePage />}
             />
+
+            <Route path={routes.dashboard} element={<DashboardPage />} />
+
+            <Route path={routes.profile} element={<ProfilePage />} />
 
             <Route
               element={
@@ -111,6 +126,17 @@ export default function AppRouter() {
               }
             >
               <Route path={routes.medidas} element={<MedidasListPage />} />
+            </Route>
+
+            <Route
+              element={
+                <PermissionRoute
+                  accessRule={medidasCreateAccessRule}
+                  redirectTo={routes.medidas}
+                />
+              }
+            >
+              <Route path="/medidas/nuevo" element={<MedidasCreatePage />} />
             </Route>
           </Route>
 

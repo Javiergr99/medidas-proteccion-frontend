@@ -1,9 +1,9 @@
+import { useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
+import "dayjs/locale/es";
 import {
   Box,
   IconButton,
-  InputAdornment,
-  MenuItem,
   Paper,
   Table,
   TableBody,
@@ -11,78 +11,86 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TextField,
   Tooltip,
-  Typography,
 } from "@mui/material";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import KeyboardArrowLeftRoundedIcon from "@mui/icons-material/KeyboardArrowLeftRounded";
+import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
 
-import { MEDIDAS_ESTADO_OPTIONS } from "../../constants/medidas.constants";
-import MedidasStatusChip from "./MedidasStatusChip";
+import MedidasTableFilters from "./MedidasTableFilters";
+import MedidasTableRows from "./MedidasTableRows";
+
+const TABLE_MIN_WIDTH = 1180;
+const SCROLL_STEP = 420;
+
+const TABLE_COLUMNS = [
+  {
+    label: "ID",
+    sx: { pl: 2.2 },
+  },
+  {
+    label: "Nombre completo",
+  },
+  {
+    label: "Estado",
+  },
+  {
+    label: "Lugar apertura",
+  },
+  {
+    label: "Edad",
+  },
+  {
+    label: "Sexo",
+  },
+  {
+    label: "País residencia",
+  },
+  {
+    label: "Fecha",
+  },
+  {
+    label: "Calidad migratoria",
+  },
+  {
+    label: "Acciones",
+    align: "center",
+  },
+];
 
 const tableHeadCellStyles = {
-  fontFamily: "Noto Sans, sans-serif",
-  fontWeight: 950,
-  color: "#111827",
-  fontSize: "0.82rem",
-  borderBottom: "1px solid rgba(15,23,42,0.10)",
-  whiteSpace: "nowrap",
-  backgroundColor: "#ffffff",
-};
-
-const tableBodyCellStyles = {
-  fontFamily: "Noto Sans, sans-serif",
+  py: 1.55,
+  px: 1.6,
+  borderBottom: "1px solid rgba(152,152,154,0.16)",
+  backgroundColor: "#fbfaf8",
   color: "#475569",
-  fontSize: "0.84rem",
-  borderBottom: "1px solid rgba(15,23,42,0.045)",
+  fontFamily: "Noto Sans, sans-serif",
+  fontWeight: 900,
+  fontSize: "0.72rem",
+  lineHeight: 1.2,
+  letterSpacing: "0.055em",
+  textTransform: "uppercase",
   whiteSpace: "nowrap",
 };
 
-const filterCellStyles = {
-  borderBottom: "1px solid rgba(15,23,42,0.06)",
-  backgroundColor: "#ffffff",
-  pt: 0.4,
-  pb: 1.5,
-};
-
-const filterInputStyles = {
-  minWidth: 130,
-  "& .MuiOutlinedInput-root": {
-    height: 36,
-    borderRadius: "12px",
+const scrollbarSx = {
+  "&::-webkit-scrollbar": {
+    height: 8,
+  },
+  "&::-webkit-scrollbar-track": {
     backgroundColor: "#f8fafc",
-    fontFamily: "Noto Sans, sans-serif",
-    fontSize: "0.78rem",
   },
-  "& .MuiInputBase-input": {
-    py: 0.7,
+  "&::-webkit-scrollbar-thumb": {
+    backgroundColor: "rgba(152,152,154,0.46)",
+    borderRadius: 999,
+    border: "2px solid #f8fafc",
+  },
+  "&::-webkit-scrollbar-thumb:hover": {
+    backgroundColor: "rgba(97,18,50,0.34)",
   },
 };
-
-function formatCellValue(value, fallback = "Sin información") {
-  if (value === null || value === undefined || value === "") {
-    return fallback;
-  }
-
-  return String(value);
-}
-
-function formatDate(value) {
-  if (!value) return "Sin fecha";
-
-  try {
-    return new Intl.DateTimeFormat("es-MX", {
-      timeZone: "America/Mexico_City",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date(value));
-  } catch {
-    return String(value).slice(0, 10);
-  }
-}
 
 export default function MedidasTable({
   rows,
@@ -91,340 +99,215 @@ export default function MedidasTable({
   onFilterChange,
   onViewRecord,
 }) {
-  function handleFilterChange(event) {
-    const { name, value } = event.target;
-    onFilterChange(name, value);
+  const tableContainerRef = useRef(null);
+  const tableRef = useRef(null);
+
+  const [canScroll, setCanScroll] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  function updateScrollState() {
+    const container = tableContainerRef.current;
+    const table = tableRef.current;
+
+    if (!container || !table) return;
+
+    const maxScrollLeft = container.scrollWidth - container.clientWidth;
+    const hasHorizontalScroll = maxScrollLeft > 4;
+
+    setCanScroll(hasHorizontalScroll);
+    setCanScrollLeft(container.scrollLeft > 4);
+    setCanScrollRight(container.scrollLeft < maxScrollLeft - 4);
+  }
+
+  useEffect(() => {
+    updateScrollState();
+
+    const resizeObserver = new ResizeObserver(updateScrollState);
+
+    if (tableContainerRef.current) {
+      resizeObserver.observe(tableContainerRef.current);
+    }
+
+    if (tableRef.current) {
+      resizeObserver.observe(tableRef.current);
+    }
+
+    window.addEventListener("resize", updateScrollState);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateScrollState);
+    };
+  }, [rows, filters]);
+
+  function handleScrollTable(direction) {
+    const container = tableContainerRef.current;
+
+    if (!container) return;
+
+    container.scrollBy({
+      left: direction === "left" ? -SCROLL_STEP : SCROLL_STEP,
+      behavior: "smooth",
+    });
   }
 
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        borderRadius: { xs: "22px", md: "26px" },
-        backgroundColor: "#ffffff",
-        border: "1px solid rgba(15,23,42,0.06)",
-        boxShadow: "0 18px 48px rgba(15,23,42,0.055)",
-        overflow: "hidden",
-      }}
-    >
-      <TableContainer
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
+      <Box
         sx={{
           width: "100%",
-          overflowX: "auto",
+          maxWidth: "100%",
+          minWidth: 0,
+          overflow: "hidden",
         }}
       >
-        <Table sx={{ minWidth: 1180 }}>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ ...tableHeadCellStyles, pl: 2.2 }}>
-                ID
-              </TableCell>
-              <TableCell sx={tableHeadCellStyles}>Nombre completo</TableCell>
-              <TableCell sx={tableHeadCellStyles}>Estado</TableCell>
-              <TableCell sx={tableHeadCellStyles}>Lugar apertura</TableCell>
-              <TableCell sx={tableHeadCellStyles}>Edad</TableCell>
-              <TableCell sx={tableHeadCellStyles}>Sexo</TableCell>
-              <TableCell sx={tableHeadCellStyles}>País residencia</TableCell>
-              <TableCell sx={tableHeadCellStyles}>Fecha</TableCell>
-              <TableCell sx={tableHeadCellStyles}>
-                Calidad migratoria
-              </TableCell>
-              <TableCell align="center" sx={tableHeadCellStyles}>
-                Acciones
-              </TableCell>
-            </TableRow>
-
-            <TableRow>
-              <TableCell sx={{ ...filterCellStyles, pl: 2.2 }}>
-                <FilterTextField
-                  name="id"
-                  value={filters.id}
-                  placeholder="Buscar ID"
-                  onChange={handleFilterChange}
-                />
-              </TableCell>
-
-              <TableCell sx={filterCellStyles}>
-                <FilterTextField
-                  name="nombre_completo"
-                  value={filters.nombre_completo}
-                  placeholder="Buscar nombre"
-                  onChange={handleFilterChange}
-                  minWidth={230}
-                />
-              </TableCell>
-
-              <TableCell sx={filterCellStyles}>
-                <FilterSelect
-                  name="estado_actual"
-                  value={filters.estado_actual}
-                  options={MEDIDAS_ESTADO_OPTIONS}
-                  onChange={handleFilterChange}
-                />
-              </TableCell>
-
-              <TableCell sx={filterCellStyles}>
-                <FilterTextField
-                  name="lugar_apertura"
-                  value={filters.lugar_apertura}
-                  placeholder="Lugar"
-                  onChange={handleFilterChange}
-                />
-              </TableCell>
-
-              <TableCell sx={filterCellStyles}>
-                <FilterTextField
-                  name="edad"
-                  value={filters.edad}
-                  placeholder="Edad"
-                  onChange={handleFilterChange}
-                  minWidth={92}
-                />
-              </TableCell>
-
-              <TableCell sx={filterCellStyles}>
-                <FilterTextField
-                  name="sexo"
-                  value={filters.sexo}
-                  placeholder="Sexo"
-                  onChange={handleFilterChange}
-                  minWidth={120}
-                />
-              </TableCell>
-
-              <TableCell sx={filterCellStyles}>
-                <FilterTextField
-                  name="pais_residencia"
-                  value={filters.pais_residencia}
-                  placeholder="País"
-                  onChange={handleFilterChange}
-                />
-              </TableCell>
-
-              <TableCell sx={filterCellStyles}>
-                <TextField
-                  name="fecha"
-                  type="date"
-                  value={filters.fecha}
-                  onChange={handleFilterChange}
-                  size="small"
-                  sx={{
-                    ...filterInputStyles,
-                    minWidth: 150,
-                  }}
-                />
-              </TableCell>
-
-              <TableCell sx={filterCellStyles}>
-                <FilterTextField
-                  name="calidad_migratoria"
-                  value={filters.calidad_migratoria}
-                  placeholder="Calidad"
-                  onChange={handleFilterChange}
-                  minWidth={180}
-                />
-              </TableCell>
-
-              <TableCell sx={filterCellStyles} />
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {rows.length > 0 ? (
-              rows.map((record) => (
-                <TableRow
-                  key={record.id}
-                  hover
-                  sx={{
-                    backgroundColor: "#ffffff",
-                    transition: "background-color 180ms ease",
-                    "&:nth-of-type(even)": {
-                      backgroundColor: "#fbfcfd",
-                    },
-                    "&:hover": {
-                      backgroundColor: "rgba(143,21,56,0.025)",
-                    },
-                  }}
-                >
-                  <TableCell
-                    sx={{
-                      ...tableBodyCellStyles,
-                      pl: 2.2,
-                      color: "#0f4f46",
-                      fontWeight: 950,
-                    }}
-                  >
-                    {formatCellValue(record.id)}
-                  </TableCell>
-
-                  <TableCell
-                    sx={{
-                      ...tableBodyCellStyles,
-                      color: "#0f4f46",
-                      fontWeight: 950,
-                      letterSpacing: "0.01em",
-                    }}
-                  >
-                    {formatCellValue(record.nombre_completo)}
-                  </TableCell>
-
-                  <TableCell sx={tableBodyCellStyles}>
-                    <MedidasStatusChip status={record.estado_actual} />
-                  </TableCell>
-
-                  <TableCell sx={tableBodyCellStyles}>
-                    {formatCellValue(record.lugar_apertura)}
-                  </TableCell>
-
-                  <TableCell sx={tableBodyCellStyles}>
-                    {record.edad || record.edad === 0
-                      ? `${record.edad} años`
-                      : "Sin información"}
-                  </TableCell>
-
-                  <TableCell sx={tableBodyCellStyles}>
-                    {formatCellValue(record.sexo)}
-                  </TableCell>
-
-                  <TableCell sx={tableBodyCellStyles}>
-                    {formatCellValue(record.pais_residencia)}
-                  </TableCell>
-
-                  <TableCell sx={tableBodyCellStyles}>
-                    {formatDate(record.fecha)}
-                  </TableCell>
-
-                  <TableCell sx={tableBodyCellStyles}>
-                    {formatCellValue(record.calidad_migratoria)}
-                  </TableCell>
-
-                  <TableCell align="center" sx={tableBodyCellStyles}>
-                    <Tooltip
-                      title={
-                        canViewDetail
-                          ? "Ver detalle"
-                          : "Detalle pendiente de endpoint confirmado"
-                      }
-                    >
-                      <span>
-                        <IconButton
-                          size="small"
-                          disabled={!canViewDetail}
-                          onClick={() => onViewRecord(record)}
-                          sx={{
-                            width: 34,
-                            height: 34,
-                            color: "#0f4f46",
-                            backgroundColor: "rgba(15,79,70,0.06)",
-                            "&:hover": {
-                              backgroundColor: "rgba(15,79,70,0.11)",
-                            },
-                            "&.Mui-disabled": {
-                              color: "rgba(100,116,139,0.35)",
-                              backgroundColor: "rgba(100,116,139,0.06)",
-                            },
-                          }}
-                        >
-                          <VisibilityRoundedIcon sx={{ fontSize: 19 }} />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={10}>
-                  <Box sx={{ py: 6, textAlign: "center" }}>
-                    <Typography
-                      sx={{
-                        fontFamily: "Noto Sans, sans-serif",
-                        color: "#1f2937",
-                        fontWeight: 950,
-                        mb: 0.6,
-                      }}
-                    >
-                      No se encontraron registros
-                    </Typography>
-
-                    <Typography
-                      sx={{
-                        fontFamily: "Noto Sans, sans-serif",
-                        color: "#64748b",
-                        fontSize: "0.9rem",
-                      }}
-                    >
-                      Ajusta los filtros para consultar nuevamente.
-                    </Typography>
-                  </Box>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Paper>
-  );
-}
-
-function FilterTextField({
-  name,
-  value,
-  placeholder,
-  onChange,
-  minWidth = 140,
-}) {
-  return (
-    <TextField
-      name={name}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      size="small"
-      sx={{
-        ...filterInputStyles,
-        minWidth,
-      }}
-      InputProps={{
-        endAdornment: (
-          <InputAdornment position="end">
-            <SearchRoundedIcon
+        <Paper
+          elevation={0}
+          sx={{
+            width: "100%",
+            maxWidth: "100%",
+            minWidth: 0,
+            borderRadius: { xs: "20px", md: "24px" },
+            backgroundColor: "#ffffff",
+            border: "1px solid rgba(152,152,154,0.16)",
+            boxShadow: "0 10px 28px rgba(19,50,46,0.045)",
+            overflow: "hidden",
+          }}
+        >
+          {canScroll ? (
+            <Box
               sx={{
-                fontSize: 18,
-                color: "#9ca3af",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 0.8,
+                px: { xs: 1.4, md: 1.7 },
+                py: 1,
+                borderBottom: "1px solid rgba(152,152,154,0.12)",
+                backgroundColor: "#ffffff",
               }}
-            />
-          </InputAdornment>
-        ),
-      }}
-    />
-  );
-}
+            >
+              <Tooltip title="Mover columnas a la izquierda">
+                <span>
+                  <IconButton
+                    type="button"
+                    size="small"
+                    disabled={!canScrollLeft}
+                    onClick={() => handleScrollTable("left")}
+                    sx={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: "12px",
+                      color: "#611232",
+                      border: "1px solid rgba(97,18,50,0.14)",
+                      backgroundColor: "#ffffff",
+                      boxShadow: "none",
+                      "&:hover": {
+                        backgroundColor: "rgba(97,18,50,0.045)",
+                        borderColor: "rgba(97,18,50,0.24)",
+                      },
+                      "&.Mui-disabled": {
+                        color: "#cbd5e1",
+                        borderColor: "rgba(203,213,225,0.45)",
+                        backgroundColor: "#ffffff",
+                      },
+                    }}
+                  >
+                    <KeyboardArrowLeftRoundedIcon />
+                  </IconButton>
+                </span>
+              </Tooltip>
 
-function FilterSelect({ name, value, options, onChange, minWidth = 150 }) {
-  return (
-    <TextField
-      select
-      name={name}
-      value={value}
-      onChange={onChange}
-      size="small"
-      SelectProps={{
-        displayEmpty: true,
-      }}
-      sx={{
-        ...filterInputStyles,
-        minWidth,
-      }}
-    >
-      <MenuItem value="">- Filtrar -</MenuItem>
+              <Tooltip title="Mover columnas a la derecha">
+                <span>
+                  <IconButton
+                    type="button"
+                    size="small"
+                    disabled={!canScrollRight}
+                    onClick={() => handleScrollTable("right")}
+                    sx={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: "12px",
+                      color: "#611232",
+                      border: "1px solid rgba(97,18,50,0.14)",
+                      backgroundColor: "#ffffff",
+                      boxShadow: "none",
+                      "&:hover": {
+                        backgroundColor: "rgba(97,18,50,0.045)",
+                        borderColor: "rgba(97,18,50,0.24)",
+                      },
+                      "&.Mui-disabled": {
+                        color: "#cbd5e1",
+                        borderColor: "rgba(203,213,225,0.45)",
+                        backgroundColor: "#ffffff",
+                      },
+                    }}
+                  >
+                    <KeyboardArrowRightRoundedIcon />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Box>
+          ) : null}
 
-      {options.map((option) => (
-        <MenuItem key={option} value={option}>
-          {option}
-        </MenuItem>
-      ))}
-    </TextField>
+          <TableContainer
+            ref={tableContainerRef}
+            onScroll={updateScrollState}
+            sx={{
+              width: "100%",
+              maxWidth: "100%",
+              minWidth: 0,
+              overflowX: "auto",
+              overflowY: "hidden",
+              backgroundColor: "#ffffff",
+              WebkitOverflowScrolling: "touch",
+              ...scrollbarSx,
+            }}
+          >
+            <Table
+              ref={tableRef}
+              sx={{
+                width: "max-content",
+                minWidth: TABLE_MIN_WIDTH,
+                borderCollapse: "separate",
+                borderSpacing: 0,
+              }}
+            >
+              <TableHead>
+                <TableRow>
+                  {TABLE_COLUMNS.map((column) => (
+                    <TableCell
+                      key={column.label}
+                      align={column.align || "left"}
+                      sx={{
+                        ...tableHeadCellStyles,
+                        ...(column.sx || {}),
+                      }}
+                    >
+                      {column.label}
+                    </TableCell>
+                  ))}
+                </TableRow>
+
+                <MedidasTableFilters
+                  filters={filters}
+                  onFilterChange={onFilterChange}
+                />
+              </TableHead>
+
+              <TableBody>
+                <MedidasTableRows
+                  rows={rows}
+                  canViewDetail={canViewDetail}
+                  onViewRecord={onViewRecord}
+                />
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      </Box>
+    </LocalizationProvider>
   );
 }
 
@@ -456,20 +339,4 @@ MedidasTable.propTypes = {
   canViewDetail: PropTypes.bool.isRequired,
   onFilterChange: PropTypes.func.isRequired,
   onViewRecord: PropTypes.func.isRequired,
-};
-
-FilterTextField.propTypes = {
-  name: PropTypes.string.isRequired,
-  value: PropTypes.string.isRequired,
-  placeholder: PropTypes.string.isRequired,
-  onChange: PropTypes.func.isRequired,
-  minWidth: PropTypes.number,
-};
-
-FilterSelect.propTypes = {
-  name: PropTypes.string.isRequired,
-  value: PropTypes.string.isRequired,
-  options: PropTypes.arrayOf(PropTypes.string).isRequired,
-  onChange: PropTypes.func.isRequired,
-  minWidth: PropTypes.number,
 };

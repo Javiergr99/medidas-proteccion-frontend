@@ -4,13 +4,13 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "preview": "vite preview",
-  "optimize:login-icon": "node scripts/optimize-login-icon.mjs",
-  "test:2fa": "playwright test tests/auth-2fa.spec.js",
-  "doctor": "npx -y react-doctor@0.1.6 . --verbose"
-},
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "optimize:login-icon": "node scripts/optimize-login-icon.mjs",
+    "test:2fa": "playwright test tests/auth-2fa.spec.js",
+    "doctor": "npx -y react-doctor@0.1.6 . --verbose"
+  },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
@@ -21,8 +21,10 @@
     "@lottiefiles/dotlottie-react": "^0.18.7",
     "@mui/icons-material": "^7.3.9",
     "@mui/material": "^7.3.9",
+    "@mui/x-date-pickers": "^9.4.0",
     "axios": "^1.15.0",
     "d3-geo": "^3.1.1",
+    "dayjs": "^1.11.21",
     "notistack": "^3.0.2",
     "prop-types": "^15.8.1",
     "react": "^19.2.4",

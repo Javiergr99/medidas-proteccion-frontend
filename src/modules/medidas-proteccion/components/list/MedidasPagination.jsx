@@ -4,7 +4,6 @@ import { Box, Pagination, Stack, Typography } from "@mui/material";
 export default function MedidasPagination({
   page,
   pageCount,
-  totalRecords,
   visibleRecords,
   startRecord,
   endRecord,
@@ -30,18 +29,13 @@ export default function MedidasPagination({
         }}
       >
         Mostrando{" "}
-        <Box component="span" sx={{ color: "#8f1538", fontWeight: 950 }}>
+        <Box component="span" sx={{ color: "#611232", fontWeight: 950 }}>
           {visibleRecords > 0 ? startRecord : 0}
         </Box>{" "}
         a{" "}
-        <Box component="span" sx={{ color: "#8f1538", fontWeight: 950 }}>
+        <Box component="span" sx={{ color: "#611232", fontWeight: 950 }}>
           {endRecord}
-        </Box>{" "}
-        de{" "}
-        <Box component="span" sx={{ color: "#8f1538", fontWeight: 950 }}>
-          {totalRecords}
-        </Box>{" "}
-        registros filtrados
+        </Box>
       </Typography>
 
       <Pagination
@@ -57,7 +51,7 @@ export default function MedidasPagination({
             color: "#475569",
           },
           "& .Mui-selected": {
-            backgroundColor: "#bc955c !important",
+            backgroundColor: "#BC955C !important",
             color: "#ffffff",
           },
         }}
@@ -69,7 +63,6 @@ export default function MedidasPagination({
 MedidasPagination.propTypes = {
   page: PropTypes.number.isRequired,
   pageCount: PropTypes.number.isRequired,
-  totalRecords: PropTypes.number.isRequired,
   visibleRecords: PropTypes.number.isRequired,
   startRecord: PropTypes.number.isRequired,
   endRecord: PropTypes.number.isRequired,
