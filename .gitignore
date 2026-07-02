@@ -60,3 +60,6 @@ playwright-*.png
 
 # Archivos locales opcionales
 .vercel/
+# Test artifacts
+test-results/
+playwright-report/
