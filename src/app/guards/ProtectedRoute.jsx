@@ -1,35 +1,31 @@
+import { useEffect } from "react";
 import PropTypes from "prop-types";
-import { Navigate, Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 
-import routes from "../routes";
 import { useAuth } from "../../hooks/useAuth";
-import { hasValidTwoFactorTempSession } from "../../modules/auth/services/auth.service";
+import {
+  getLoginUniversalRedirectPath,
+  redirectToLoginUniversal,
+} from "../../utils/externalAuthRedirect";
 
 /**
- * Protege rutas privadas.
+ * Protege rutas privadas de MP.
  *
- * Si no hay sesión, redirige al login.
- * Si hay reto 2FA pendiente, redirige a verificación.
- *
- * @param {{
- *   children?: import("react").ReactNode,
- *   redirectTo?: string
- * }} props
- * @returns {JSX.Element}
+ * MP ya no tiene login interno.
+ * Si no hay sesión, redirige al Login Universal.
  */
-export default function ProtectedRoute({
-  children = null,
-  redirectTo = routes.login,
-}) {
-  const { isAuthenticated, isPendingTwoFactor } = useAuth();
-  const hasStoredTwoFactorChallenge = hasValidTwoFactorTempSession();
+export default function ProtectedRoute({ children = null }) {
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
 
-  if (isPendingTwoFactor || hasStoredTwoFactorChallenge) {
-    return <Navigate to={routes.twoFactor} replace />;
-  }
+  useEffect(() => {
+    if (!isAuthenticated) {
+      redirectToLoginUniversal(getLoginUniversalRedirectPath(location));
+    }
+  }, [isAuthenticated, location]);
 
   if (!isAuthenticated) {
-    return <Navigate to={redirectTo} replace />;
+    return null;
   }
 
   return children || <Outlet />;
@@ -37,5 +33,4 @@ export default function ProtectedRoute({
 
 ProtectedRoute.propTypes = {
   children: PropTypes.node,
-  redirectTo: PropTypes.string,
 };

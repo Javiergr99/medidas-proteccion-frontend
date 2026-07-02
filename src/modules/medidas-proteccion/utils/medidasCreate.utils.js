@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
 
 import {
+  DISCAPACIDAD_EMPTY_ITEM,
   INITIAL_MEDIDAS_CREATE_FORMS,
   MEDIDAS_CREATE_SECTIONS,
 } from "../constants/medidasCreate.constants";
@@ -8,14 +9,28 @@ import {
 export function getInitialMedidasCreateForms() {
   return {
     datos_generales: {
-      ...INITIAL_MEDIDAS_CREATE_FORMS.datos_generales,
+      ...(INITIAL_MEDIDAS_CREATE_FORMS.datos_generales || {}),
+      discapacidades: [],
     },
     impresion_diagnostica: {
-      ...INITIAL_MEDIDAS_CREATE_FORMS.impresion_diagnostica,
+      ...(INITIAL_MEDIDAS_CREATE_FORMS.impresion_diagnostica || {}),
     },
     intervencion_multidisciplinaria: {
-      ...INITIAL_MEDIDAS_CREATE_FORMS.intervencion_multidisciplinaria,
+      ...(INITIAL_MEDIDAS_CREATE_FORMS.intervencion_multidisciplinaria || {}),
       detalles_diagnosticos: [],
+    },
+    plan_restitucion: {
+      ...(INITIAL_MEDIDAS_CREATE_FORMS.plan_restitucion || {}),
+      derechos_vulnerados: [],
+    },
+    medidas_proteccion: {
+      ...(INITIAL_MEDIDAS_CREATE_FORMS.medidas_proteccion || {}),
+      medidas_urgentes: [],
+      medidas_especiales: [],
+      observaciones: "",
+    },
+    cierre_caso: {
+      ...(INITIAL_MEDIDAS_CREATE_FORMS.cierre_caso || {}),
     },
   };
 }
@@ -66,6 +81,16 @@ export function isAcompanado(value) {
   return value === "si";
 }
 
+function getEmptyDiscapacidadItem() {
+  return {
+    ...DISCAPACIDAD_EMPTY_ITEM,
+  };
+}
+
+function normalizeUppercaseText(value) {
+  return String(value || "").toUpperCase();
+}
+
 export function normalizeDatosGeneralesFieldValue(name, value) {
   if (name === "curp") {
     return String(value || "")
@@ -81,12 +106,15 @@ export function normalizeDatosGeneralesFieldValue(name, value) {
       "segundo_apellido",
       "region_origen",
       "numero_expediente",
+      "lugar_nacimiento",
+      "senas_particulares",
+      "especificacion_escolaridad",
     ].includes(name)
   ) {
-    return String(value || "").toUpperCase();
+    return normalizeUppercaseText(value);
   }
 
-  if (name === "edad") {
+  if (["edad", "estatura"].includes(name)) {
     return String(value || "").replace(/\D/g, "").slice(0, 3);
   }
 
@@ -94,8 +122,15 @@ export function normalizeDatosGeneralesFieldValue(name, value) {
 }
 
 export function normalizeImpresionDiagnosticaFieldValue(name, value) {
-  if (["religion", "tipo_enfermedad"].includes(name)) {
-    return String(value || "").toUpperCase();
+  if (
+    [
+      "religion",
+      "tipo_enfermedad",
+      "idioma",
+      "tipo_lengua_indigena",
+    ].includes(name)
+  ) {
+    return normalizeUppercaseText(value);
   }
 
   return value;
@@ -104,15 +139,49 @@ export function normalizeImpresionDiagnosticaFieldValue(name, value) {
 export function normalizeIntervencionMultidisciplinariaFieldValue(name, value) {
   if (
     [
+      "actor_derivacion",
       "otro_lugar_intervencion",
+      "lugar_realizacion_intervencion",
+      "tipo_diagnostico",
       "asesoria_legal_servidor_publico",
       "representacion_juridica_servidor_publico",
     ].includes(name)
   ) {
-    return String(value || "").toUpperCase();
+    return normalizeUppercaseText(value);
+  }
+
+  if (name === "detalles_diagnosticos" && Array.isArray(value)) {
+    return value.map((item) => ({
+      ...item,
+      tipo_diagnostico: normalizeUppercaseText(item.tipo_diagnostico),
+    }));
   }
 
   return value;
+}
+
+export function normalizePlanRestitucionFieldValue(name, value) {
+  if (name === "derechos_vulnerados" && Array.isArray(value)) {
+    return value
+      .map((item) => String(item || "").trim())
+      .filter(Boolean);
+  }
+
+  return value;
+}
+
+export function normalizeMedidasProteccionFieldValue(name, value) {
+  if (["medidas_urgentes", "medidas_especiales"].includes(name)) {
+    return Array.isArray(value)
+      ? value.map((item) => String(item || "").trim()).filter(Boolean)
+      : [];
+  }
+
+  if (name === "observaciones") {
+    return String(value || "").slice(0, 1200);
+  }
+
+  return String(value || "");
 }
 
 export function buildNextDatosGeneralesForm({ previousForm, name, value }) {
@@ -127,6 +196,27 @@ export function buildNextDatosGeneralesForm({ previousForm, name, value }) {
 
   if (name === "nacionalidad_id") {
     nextForm.lugar_nacimiento = "";
+    nextForm.entidad_federativa_id = "";
+  }
+
+  if (name === "escolaridad_id") {
+    nextForm.especificacion_escolaridad = "";
+  }
+
+  if (name === "pertenencia_indigena_id") {
+    nextForm.pertenencia_indigena_especifica_id = "";
+  }
+
+  if (name === "tiene_discapacidad") {
+    if (value === "si") {
+      nextForm.discapacidades =
+        Array.isArray(previousForm.discapacidades) &&
+        previousForm.discapacidades.length
+          ? previousForm.discapacidades
+          : [getEmptyDiscapacidadItem()];
+    } else {
+      nextForm.discapacidades = [];
+    }
   }
 
   if (name === "cuenta_con_curp" && !hasCuentaConCurp(value)) {
@@ -182,8 +272,21 @@ export function buildNextIntervencionMultidisciplinariaForm({
     nextForm.otro_lugar_intervencion = "";
   }
 
-  if (name === "diagnostico_elaborado" && value !== "si") {
-    nextForm.detalles_diagnosticos = [];
+  if (name === "diagnostico_elaborado") {
+    if (value === "si") {
+      nextForm.detalles_diagnosticos =
+        Array.isArray(previousForm.detalles_diagnosticos) &&
+        previousForm.detalles_diagnosticos.length
+          ? previousForm.detalles_diagnosticos
+          : [
+              {
+                tipo_diagnostico: "",
+                fecha_diagnostico: "",
+              },
+            ];
+    } else {
+      nextForm.detalles_diagnosticos = [];
+    }
   }
 
   if (name === "asesoria_legal" && value !== "si") {
@@ -194,6 +297,61 @@ export function buildNextIntervencionMultidisciplinariaForm({
   if (name === "representacion_juridica" && value !== "si") {
     nextForm.representacion_juridica_servidor_publico = "";
     nextForm.representacion_juridica_fecha = "";
+  }
+
+  return nextForm;
+}
+
+export function buildNextPlanRestitucionForm({ previousForm, name, value }) {
+  const nextForm = {
+    ...previousForm,
+    [name]: value,
+  };
+
+  if (name === "derechos_vulnerados") {
+    nextForm.derechos_vulnerados = Array.from(
+      new Set(
+        (Array.isArray(value) ? value : [])
+          .map((item) => String(item || "").trim())
+          .filter(Boolean)
+      )
+    );
+  }
+
+  return nextForm;
+}
+
+export function buildNextMedidasProteccionForm({
+  previousForm = {},
+  name,
+  value,
+}) {
+  const nextForm = {
+    medidas_urgentes: [],
+    medidas_especiales: [],
+    observaciones: "",
+    ...previousForm,
+    [name]: value,
+  };
+
+  if (name === "medidas_urgentes") {
+    nextForm.medidas_urgentes = Array.from(
+      new Set(
+        (Array.isArray(value) ? value : [])
+          .map((item) => String(item || "").trim())
+          .filter(Boolean)
+      )
+    );
+  }
+
+  if (name === "medidas_especiales") {
+    nextForm.medidas_especiales = Array.from(
+      new Set(
+        (Array.isArray(value) ? value : [])
+          .map((item) => String(item || "").trim())
+          .filter(Boolean)
+      )
+    );
   }
 
   return nextForm;
@@ -253,6 +411,59 @@ export function validateDatosGenerales(form) {
       "Selecciona el parentesco del acompañante.";
   }
 
+  if (form.estatura) {
+    const estatura = Number(form.estatura);
+
+    if (Number.isNaN(estatura) || estatura <= 0 || estatura > 250) {
+      errors.estatura = "Captura una estatura válida en centímetros.";
+    }
+  }
+
+  if (form.tiene_discapacidad === "si") {
+    const discapacidades = Array.isArray(form.discapacidades)
+      ? form.discapacidades
+      : [];
+
+    if (!discapacidades.length) {
+      errors.discapacidades = "Agrega al menos una discapacidad.";
+    } else {
+      const discapacidadErrors = discapacidades.map((item) => {
+        const itemErrors = {};
+
+        if (!item.categoria_discapacidad_id) {
+          itemErrors.categoria_discapacidad_id =
+            "Selecciona la categoría de discapacidad.";
+        }
+
+        if (!item.subtipo_discapacidad_id) {
+          itemErrors.subtipo_discapacidad_id =
+            "Selecciona el subtipo de discapacidad.";
+        }
+
+        if (!item.severidad_discapacidad_id) {
+          itemErrors.severidad_discapacidad_id = "Selecciona la severidad.";
+        }
+
+        if (
+          item.requiere_especificacion === true &&
+          !String(item.especifique_otros || "").trim()
+        ) {
+          itemErrors.especifique_otros = "Especifica la discapacidad.";
+        }
+
+        return itemErrors;
+      });
+
+      const hasDiscapacidadErrors = discapacidadErrors.some((itemErrors) => {
+        return Object.keys(itemErrors).length > 0;
+      });
+
+      if (hasDiscapacidadErrors) {
+        errors.discapacidades = discapacidadErrors;
+      }
+    }
+  }
+
   return errors;
 }
 
@@ -288,17 +499,44 @@ export function validateIntervencionMultidisciplinaria(form) {
   }
 
   if (form.diagnostico_elaborado === "si") {
-    if (!form.detalles_diagnosticos.length) {
+    const detallesDiagnosticos = Array.isArray(form.detalles_diagnosticos)
+      ? form.detalles_diagnosticos
+      : [];
+
+    if (!detallesDiagnosticos.length) {
       errors.detalles_diagnosticos =
-        "Agrega al menos un detalle de diagnóstico.";
+        "Agrega al menos un diagnóstico multidisciplinario.";
     } else {
-      const hasInvalidDetail = form.detalles_diagnosticos.some((item) => {
-        return !item.tipo_diagnostico || !item.fecha_diagnostico;
+      const detallesErrors = detallesDiagnosticos.map((item) => {
+        const itemErrors = {};
+
+        if (!String(item.tipo_diagnostico || "").trim()) {
+          itemErrors.tipo_diagnostico = "Captura el tipo de diagnóstico.";
+        }
+
+        if (!item.fecha_diagnostico) {
+          itemErrors.fecha_diagnostico = "Captura la fecha de diagnóstico.";
+        } else {
+          const fechaDiagnostico = dayjs(item.fecha_diagnostico);
+
+          if (!fechaDiagnostico.isValid()) {
+            itemErrors.fecha_diagnostico = "La fecha no es válida.";
+          }
+
+          if (fechaDiagnostico.isAfter(dayjs(), "day")) {
+            itemErrors.fecha_diagnostico = "No se permiten fechas futuras.";
+          }
+        }
+
+        return itemErrors;
       });
 
-      if (hasInvalidDetail) {
-        errors.detalles_diagnosticos =
-          "Cada diagnóstico debe tener tipo y fecha.";
+      const hasDetalleErrors = detallesErrors.some((itemErrors) => {
+        return Object.keys(itemErrors).length > 0;
+      });
+
+      if (hasDetalleErrors) {
+        errors.detalles_diagnosticos = detallesErrors;
       }
     }
   }
@@ -311,6 +549,16 @@ export function validateIntervencionMultidisciplinaria(form) {
 
     if (!form.asesoria_legal_fecha) {
       errors.asesoria_legal_fecha = "Captura la fecha de asesoría legal.";
+    } else {
+      const fechaAsesoria = dayjs(form.asesoria_legal_fecha);
+
+      if (!fechaAsesoria.isValid()) {
+        errors.asesoria_legal_fecha = "La fecha no es válida.";
+      }
+
+      if (fechaAsesoria.isAfter(dayjs(), "day")) {
+        errors.asesoria_legal_fecha = "No se permiten fechas futuras.";
+      }
     }
   }
 
@@ -323,7 +571,73 @@ export function validateIntervencionMultidisciplinaria(form) {
     if (!form.representacion_juridica_fecha) {
       errors.representacion_juridica_fecha =
         "Captura la fecha de representación jurídica.";
+    } else {
+      const fechaRepresentacion = dayjs(form.representacion_juridica_fecha);
+
+      if (!fechaRepresentacion.isValid()) {
+        errors.representacion_juridica_fecha = "La fecha no es válida.";
+      }
+
+      if (fechaRepresentacion.isAfter(dayjs(), "day")) {
+        errors.representacion_juridica_fecha =
+          "No se permiten fechas futuras.";
+      }
     }
+  }
+
+  return errors;
+}
+
+export function validatePlanRestitucion(form) {
+  const errors = {};
+
+  if (form.fecha_elaboracion) {
+    const fechaElaboracion = dayjs(form.fecha_elaboracion);
+
+    if (!fechaElaboracion.isValid()) {
+      errors.fecha_elaboracion = "La fecha no es válida.";
+    }
+
+    if (fechaElaboracion.isAfter(dayjs(), "day")) {
+      errors.fecha_elaboracion = "No se permiten fechas futuras.";
+    }
+  }
+
+  if (Array.isArray(form.derechos_vulnerados)) {
+    const hasEmptyRights = form.derechos_vulnerados.some((item) => {
+      return !String(item || "").trim();
+    });
+
+    if (hasEmptyRights) {
+      errors.derechos_vulnerados =
+        "Elimina o corrige los derechos vulnerados vacíos.";
+    }
+  }
+
+  return errors;
+}
+
+export function validateMedidasProteccion(form = {}) {
+  const errors = {};
+
+  const medidasUrgentes = Array.isArray(form.medidas_urgentes)
+    ? form.medidas_urgentes
+    : [];
+
+  const medidasEspeciales = Array.isArray(form.medidas_especiales)
+    ? form.medidas_especiales
+    : [];
+
+  if (medidasUrgentes.length === 0 && medidasEspeciales.length === 0) {
+    errors.medidas_urgentes =
+      "Agrega al menos una medida urgente o una medida especial.";
+    errors.medidas_especiales =
+      "Agrega al menos una medida urgente o una medida especial.";
+  }
+
+  if (String(form.observaciones || "").length > 1200) {
+    errors.observaciones =
+      "Las observaciones no pueden exceder 1200 caracteres.";
   }
 
   return errors;
@@ -356,6 +670,41 @@ function toNullableBooleanFromSiNo(value) {
   return toBooleanFromSiNo(value);
 }
 
+function buildDiscapacidadesPayload(form) {
+  if (form.tiene_discapacidad !== "si") {
+    return [];
+  }
+
+  const discapacidades = Array.isArray(form.discapacidades)
+    ? form.discapacidades
+    : [];
+
+  return discapacidades.map((item) => ({
+    subtipo_discapacidad_id: toNumberOrNull(item.subtipo_discapacidad_id),
+    severidad_discapacidad_id: toNumberOrNull(item.severidad_discapacidad_id),
+    especifique_otros: toStringOrNull(item.especifique_otros),
+  }));
+}
+
+function buildDetallesDiagnosticosPayload(form) {
+  const diagnosticoElaborado = toNullableBooleanFromSiNo(
+    form.diagnostico_elaborado
+  );
+
+  if (diagnosticoElaborado !== true) {
+    return [];
+  }
+
+  const detallesDiagnosticos = Array.isArray(form.detalles_diagnosticos)
+    ? form.detalles_diagnosticos
+    : [];
+
+  return detallesDiagnosticos.map((item) => ({
+    tipo_diagnostico: toStringOrNull(item.tipo_diagnostico),
+    fecha_diagnostico: toStringOrNull(item.fecha_diagnostico),
+  }));
+}
+
 export function buildDatosGeneralesPayload(form) {
   const cuentaConCurp = hasCuentaConCurp(form.cuenta_con_curp);
 
@@ -364,6 +713,10 @@ export function buildDatosGeneralesPayload(form) {
   );
 
   const estaAcompanado = isAcompanado(form.acompanado);
+
+  const tieneDiscapacidad = toNullableBooleanFromSiNo(
+    form.tiene_discapacidad
+  );
 
   return {
     nna_id: toStringOrNull(form.nna_id),
@@ -383,6 +736,19 @@ export function buildDatosGeneralesPayload(form) {
     afrodescendencia_id: toNumberOrNull(form.afrodescendencia_id),
     pertenencia_indigena_id: toNumberOrNull(form.pertenencia_indigena_id),
 
+    entidad_federativa_id: toNumberOrNull(form.entidad_federativa_id),
+    especificacion_escolaridad: toStringOrNull(
+      form.especificacion_escolaridad
+    ),
+    pertenencia_indigena_especifica_id: toNumberOrNull(
+      form.pertenencia_indigena_especifica_id
+    ),
+
+    tiene_discapacidad: tieneDiscapacidad,
+    discapacidades: buildDiscapacidadesPayload(form),
+
+    estatura: toNumberOrNull(form.estatura),
+    senas_particulares: toStringOrNull(form.senas_particulares),
     complexion_id: toNumberOrNull(form.complexion_id),
     tez_id: toNumberOrNull(form.tez_id),
     color_cabello_id: toNumberOrNull(form.color_cabello_id),
@@ -397,7 +763,7 @@ export function buildDatosGeneralesPayload(form) {
     ),
 
     numero_expediente: String(form.numero_expediente || "").trim(),
-    edad: Number(form.edad),
+    edad: toNumberOrNull(form.edad),
 
     asignacion_expediente: toStringOrNull(form.asignacion_expediente),
     lugar_apertura: toStringOrNull(form.lugar_apertura),
@@ -458,26 +824,23 @@ export function buildIntervencionMultidisciplinariaPayload(form) {
 
   return {
     actor_derivacion: toStringOrNull(form.actor_derivacion),
+
     lugar_intervencion: toStringOrNull(form.lugar_intervencion),
     otro_lugar_intervencion:
       form.lugar_intervencion === "Otras"
         ? toStringOrNull(form.otro_lugar_intervencion)
         : null,
+
     entidad_federativa_conocimiento: toStringOrNull(
       form.entidad_federativa_conocimiento
     ),
+
     lugar_realizacion_intervencion: toStringOrNull(
       form.lugar_realizacion_intervencion
     ),
 
     diagnostico_elaborado: diagnosticoElaborado,
-    detalles_diagnosticos:
-      diagnosticoElaborado === true
-        ? form.detalles_diagnosticos.map((item) => ({
-            tipo_diagnostico: item.tipo_diagnostico,
-            fecha_diagnostico: item.fecha_diagnostico,
-          }))
-        : [],
+    detalles_diagnosticos: buildDetallesDiagnosticosPayload(form),
 
     asesoria_legal: asesoriaLegal,
     asesoria_legal_servidor_publico:
@@ -498,6 +861,33 @@ export function buildIntervencionMultidisciplinariaPayload(form) {
       representacionJuridica === true
         ? toStringOrNull(form.representacion_juridica_fecha)
         : null,
+  };
+}
+
+export function buildPlanRestitucionPayload(form) {
+  return {
+    fecha_elaboracion: toStringOrNull(form.fecha_elaboracion),
+    derechos_vulnerados: Array.isArray(form.derechos_vulnerados)
+      ? form.derechos_vulnerados
+          .map((item) => String(item || "").trim())
+          .filter(Boolean)
+      : [],
+  };
+}
+
+export function buildMedidasProteccionPayload(form = {}) {
+  return {
+    medidas_urgentes: Array.isArray(form.medidas_urgentes)
+      ? form.medidas_urgentes
+          .map((item) => String(item || "").trim())
+          .filter(Boolean)
+      : [],
+    medidas_especiales: Array.isArray(form.medidas_especiales)
+      ? form.medidas_especiales
+          .map((item) => String(item || "").trim())
+          .filter(Boolean)
+      : [],
+    observaciones: String(form.observaciones || "").trim() || null,
   };
 }
 

@@ -16,6 +16,8 @@ import MedidasCreateProgress from "../components/create/MedidasCreateProgress";
 import MedidasCreateRecordHero from "../components/create/MedidasCreateRecordHero";
 import MedidasModuleHeader from "../components/navigation/MedidasModuleHeader";
 import NnaVerificationPanel from "../components/create/NnaVerificationPanel";
+import PlanRestitucionForm from "../components/create/PlanRestitucionForm";
+import MedidasProteccionForm from "../components/create/MedidasProteccionForm";
 
 import { useMedidasCatalogos } from "../hooks/useMedidasCatalogos";
 import { useNnaVerification } from "../hooks/useNnaVerification";
@@ -32,6 +34,8 @@ import {
   normalizeRegistroSession,
   saveImpresionDiagnosticaRequest,
   saveIntervencionMultidisciplinariaRequest,
+  saveMedidasProteccionRequest,
+  savePlanRestitucionRequest,
   sendRegistroRevisionRequest,
   updateDatosGeneralesRequest,
 } from "../services/medidasCreate.service";
@@ -40,9 +44,13 @@ import {
   buildDatosGeneralesPayload,
   buildImpresionDiagnosticaPayload,
   buildIntervencionMultidisciplinariaPayload,
+  buildMedidasProteccionPayload,
   buildNextDatosGeneralesForm,
   buildNextImpresionDiagnosticaForm,
   buildNextIntervencionMultidisciplinariaForm,
+  buildNextMedidasProteccionForm,
+  buildNextPlanRestitucionForm,
+  buildPlanRestitucionPayload,
   getInitialMedidasCreateForms,
   getNextSectionKey,
   getPreviousSectionKey,
@@ -52,15 +60,27 @@ import {
   normalizeDatosGeneralesFieldValue,
   normalizeImpresionDiagnosticaFieldValue,
   normalizeIntervencionMultidisciplinariaFieldValue,
+  normalizeMedidasProteccionFieldValue,
+  normalizePlanRestitucionFieldValue,
   validateDatosGenerales,
   validateImpresionDiagnostica,
   validateIntervencionMultidisciplinaria,
+  validateMedidasProteccion,
+  validatePlanRestitucion,
 } from "../utils/medidasCreate.utils";
 
 import {
   buildDatosGeneralesFromVerificationPayload,
   buildDatosGeneralesFromVerifiedNna,
 } from "../utils/nnaVerification.utils";
+
+function getEmptyMedidasProteccionForm() {
+  return {
+    medidas_urgentes: [],
+    medidas_especiales: [],
+    observaciones: "",
+  };
+}
 
 export default function MedidasCreatePage() {
   const navigate = useNavigate();
@@ -77,7 +97,7 @@ export default function MedidasCreatePage() {
   const [errorsBySection, setErrorsBySection] = useState({});
 
   const storedSession = getStoredAuthSession();
-  const user = authUser || storedSession.user;
+  const user = authUser || storedSession?.user || {};
 
   const {
     catalogos,
@@ -100,7 +120,7 @@ export default function MedidasCreatePage() {
   const canSendReview = Boolean(registroSession?.registroId);
 
   function handleGoToDashboard() {
-    navigate(routes.dashboard);
+    window.location.assign(routes.loginUniversalDashboard);
   }
 
   function handleGoToList() {
@@ -121,7 +141,7 @@ export default function MedidasCreatePage() {
   }
 
   function handleViewProfile() {
-    navigate(`${routes.profile}?mode=view`);
+   window.location.assign(`${routes.loginUniversalProfile}?mode=view`);
   }
 
   async function handleLogout() {
@@ -132,10 +152,8 @@ export default function MedidasCreatePage() {
     try {
       await logout();
     } finally {
-      navigate(routes.login, {
-        replace: true,
-      });
-    }
+        window.location.replace(routes.loginUniversalLogout);
+      }
   }
 
   async function handleVerifyNna(payload) {
@@ -151,6 +169,7 @@ export default function MedidasCreatePage() {
         ? buildDatosGeneralesFromVerifiedNna({
             currentForm: previousForms.datos_generales,
             nna: verifiedNna,
+            catalogos,
           })
         : buildDatosGeneralesFromVerificationPayload({
             currentForm: previousForms.datos_generales,
@@ -229,6 +248,34 @@ export default function MedidasCreatePage() {
         };
       }
 
+      if (activeSection === "plan_restitucion") {
+        const value = normalizePlanRestitucionFieldValue(name, rawValue);
+
+        return {
+          ...previousForms,
+          plan_restitucion: buildNextPlanRestitucionForm({
+            previousForm: previousForms.plan_restitucion,
+            name,
+            value,
+          }),
+        };
+      }
+
+      if (activeSection === "medidas_proteccion") {
+        const value = normalizeMedidasProteccionFieldValue(name, rawValue);
+
+        return {
+          ...previousForms,
+          medidas_proteccion: buildNextMedidasProteccionForm({
+            previousForm:
+              previousForms.medidas_proteccion ||
+              getEmptyMedidasProteccionForm(),
+            name,
+            value,
+          }),
+        };
+      }
+
       return previousForms;
     });
 
@@ -253,6 +300,16 @@ export default function MedidasCreatePage() {
     if (activeSection === "intervencion_multidisciplinaria") {
       return validateIntervencionMultidisciplinaria(
         forms.intervencion_multidisciplinaria
+      );
+    }
+
+    if (activeSection === "plan_restitucion") {
+      return validatePlanRestitucion(forms.plan_restitucion);
+    }
+
+    if (activeSection === "medidas_proteccion") {
+      return validateMedidasProteccion(
+        forms.medidas_proteccion || getEmptyMedidasProteccionForm()
       );
     }
 
@@ -351,6 +408,62 @@ export default function MedidasCreatePage() {
     return response;
   }
 
+  async function savePlanRestitucionSection() {
+    if (!registroSession?.registroId) {
+      enqueueSnackbar(
+        "Primero debes guardar Datos Generales para obtener el UUID del expediente.",
+        {
+          variant: "warning",
+        }
+      );
+      return null;
+    }
+
+    const payload = buildPlanRestitucionPayload(forms.plan_restitucion);
+
+    const response = await savePlanRestitucionRequest({
+      registroId: registroSession.registroId,
+      payload,
+    });
+
+    const nextSession = normalizeRegistroSession(response);
+
+    if (nextSession) {
+      setRegistroSession(nextSession);
+    }
+
+    return response;
+  }
+
+  async function saveMedidasProteccionSection() {
+    if (!registroSession?.registroId) {
+      enqueueSnackbar(
+        "Primero debes guardar Datos Generales para obtener el UUID del expediente.",
+        {
+          variant: "warning",
+        }
+      );
+      return null;
+    }
+
+    const payload = buildMedidasProteccionPayload(
+      forms.medidas_proteccion || getEmptyMedidasProteccionForm()
+    );
+
+    const response = await saveMedidasProteccionRequest({
+      registroId: registroSession.registroId,
+      payload,
+    });
+
+    const nextSession = normalizeRegistroSession(response);
+
+    if (nextSession) {
+      setRegistroSession(nextSession);
+    }
+
+    return response;
+  }
+
   async function saveCurrentSection() {
     if (saving) return false;
 
@@ -374,7 +487,9 @@ export default function MedidasCreatePage() {
     if (
       activeSection !== "datos_generales" &&
       activeSection !== "impresion_diagnostica" &&
-      activeSection !== "intervencion_multidisciplinaria"
+      activeSection !== "intervencion_multidisciplinaria" &&
+      activeSection !== "plan_restitucion" &&
+      activeSection !== "medidas_proteccion"
     ) {
       enqueueSnackbar("Esta sección se integrará en una fase posterior.", {
         variant: "info",
@@ -411,6 +526,14 @@ export default function MedidasCreatePage() {
 
       if (activeSection === "intervencion_multidisciplinaria") {
         response = await saveIntervencionMultidisciplinariaSection();
+      }
+
+      if (activeSection === "plan_restitucion") {
+        response = await savePlanRestitucionSection();
+      }
+
+      if (activeSection === "medidas_proteccion") {
+        response = await saveMedidasProteccionSection();
       }
 
       if (!response) {
@@ -556,6 +679,26 @@ export default function MedidasCreatePage() {
           form={forms.intervencion_multidisciplinaria}
           errors={activeErrors}
           catalogos={catalogos}
+          onFieldChange={updateField}
+        />
+      );
+    }
+
+    if (activeSection === "plan_restitucion") {
+      return (
+        <PlanRestitucionForm
+          form={forms.plan_restitucion}
+          errors={activeErrors}
+          onFieldChange={updateField}
+        />
+      );
+    }
+
+    if (activeSection === "medidas_proteccion") {
+      return (
+        <MedidasProteccionForm
+          form={forms.medidas_proteccion || getEmptyMedidasProteccionForm()}
+          errors={activeErrors}
           onFieldChange={updateField}
         />
       );

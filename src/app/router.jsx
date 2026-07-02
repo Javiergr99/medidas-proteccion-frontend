@@ -4,36 +4,12 @@ import { Box, CircularProgress, Typography } from "@mui/material";
 
 import routes from "./routes";
 import ProtectedRoute from "./guards/ProtectedRoute";
-import PublicRoute from "./guards/PublicRoute";
-import PendingTwoFactorRoute from "./guards/PendingTwoFactorRoute";
 import PermissionRoute from "./guards/PermissionRoute";
 
 import {
   MP_ACTIONS,
   REGISTRY_ROUTE_ACCESS_RULES,
 } from "../utils/rbac";
-
-const HomePage = lazy(() => import("../modules/landing/pages/HomePage"));
-
-const LoginPage = lazy(() => import("../modules/auth/pages/LoginPage"));
-
-const ForgotPasswordPage = lazy(() =>
-  import("../modules/auth/pages/ForgotPasswordPage")
-);
-
-const TwoFactorPage = lazy(() =>
-  import("../modules/auth/pages/TwoFactorPage")
-);
-
-const DashboardPage = lazy(() =>
-  import("../modules/dashboard/pages/DashboardPage")
-);
-
-const PostLoginWelcomePage = lazy(() =>
-  import("../modules/auth/pages/PostLoginWelcomePage")
-);
-
-const ProfilePage = lazy(() => import("../modules/profile/pages/ProfilePage"));
 
 const MedidasListPage = lazy(() =>
   import("../modules/medidas-proteccion/pages/MedidasListPage")
@@ -92,36 +68,17 @@ export default function AppRouter() {
     <BrowserRouter>
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
-          <Route path={routes.root} element={<HomePage />} />
-
-          <Route element={<PublicRoute />}>
-            <Route path={routes.login} element={<LoginPage />} />
-
-            <Route
-              path={routes.forgotPassword}
-              element={<ForgotPasswordPage />}
-            />
-          </Route>
-
-          <Route element={<PendingTwoFactorRoute />}>
-            <Route path={routes.twoFactor} element={<TwoFactorPage />} />
-          </Route>
+          <Route
+            path={routes.root}
+            element={<Navigate to={routes.medidas} replace />}
+          />
 
           <Route element={<ProtectedRoute />}>
-            <Route
-              path={routes.postLoginWelcome}
-              element={<PostLoginWelcomePage />}
-            />
-
-            <Route path={routes.dashboard} element={<DashboardPage />} />
-
-            <Route path={routes.profile} element={<ProfilePage />} />
-
             <Route
               element={
                 <PermissionRoute
                   accessRule={REGISTRY_ROUTE_ACCESS_RULES.medidasProteccionList}
-                  redirectTo={routes.dashboard}
+                  redirectTo={routes.medidas}
                 />
               }
             >
@@ -136,11 +93,14 @@ export default function AppRouter() {
                 />
               }
             >
-              <Route path="/medidas/nuevo" element={<MedidasCreatePage />} />
+              <Route
+                path={routes.medidasNuevo}
+                element={<MedidasCreatePage />}
+              />
             </Route>
           </Route>
 
-          <Route path="*" element={<Navigate to={routes.root} replace />} />
+          <Route path="*" element={<Navigate to={routes.medidas} replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

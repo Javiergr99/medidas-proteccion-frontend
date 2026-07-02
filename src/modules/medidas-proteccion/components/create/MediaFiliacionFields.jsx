@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 
-import { MedidasSelectField } from "./MedidasFormControls";
+import { MedidasSelectField, MedidasTextField } from "./MedidasFormControls";
 
 export default function MediaFiliacionFields({
   form,
@@ -10,6 +10,18 @@ export default function MediaFiliacionFields({
 }) {
   return (
     <>
+      <MedidasTextField
+        label="Estatura en centímetros"
+        name="estatura"
+        value={form.estatura}
+        onChange={onFieldChange}
+        error={errors.estatura}
+        inputProps={{
+          inputMode: "numeric",
+          maxLength: 3,
+        }}
+      />
+
       <MedidasSelectField
         label="Complexión"
         name="complexion_id"
@@ -71,6 +83,15 @@ export default function MediaFiliacionFields({
         options={catalogos.tipo_ojos}
         onChange={onFieldChange}
         error={errors.tipo_ojos_id}
+      />
+
+      <MedidasTextField
+        label="Señas particulares"
+        name="senas_particulares"
+        value={form.senas_particulares}
+        onChange={onFieldChange}
+        error={errors.senas_particulares}
+        inputProps={{ maxLength: 255 }}
       />
     </>
   );

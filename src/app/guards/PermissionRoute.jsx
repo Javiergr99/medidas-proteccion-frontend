@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import PropTypes from "prop-types";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
@@ -5,6 +6,10 @@ import routes from "../routes";
 import { useAuth } from "../../hooks/useAuth";
 import { getStoredAuthSession } from "../../utils/storage";
 import { hasPermissionGroupAccess } from "../../utils/rbac";
+import {
+  getLoginUniversalRedirectPath,
+  redirectToLoginUniversal,
+} from "../../utils/externalAuthRedirect";
 
 const EMPTY_ACTIONS = [];
 
@@ -21,7 +26,7 @@ export default function PermissionRoute({
   allowGroupOnly = false,
   requiredActions = EMPTY_ACTIONS,
   fallbackActions = EMPTY_ACTIONS,
-  redirectTo = routes.dashboard,
+  redirectTo = routes.medidas,
 }) {
   const location = useLocation();
   const { user: authUser, isAuthenticated } = useAuth();
@@ -37,16 +42,16 @@ export default function PermissionRoute({
   const resolvedFallbackActions =
     accessRule?.fallbackActions || fallbackActions;
 
-  if (!isAuthenticated && !hasToken) {
-    return (
-      <Navigate
-        to={routes.login}
-        replace
-        state={{
-          from: location.pathname,
-        }}
-      />
-    );
+  const hasSession = isAuthenticated || hasToken;
+
+  useEffect(() => {
+    if (!hasSession) {
+      redirectToLoginUniversal(getLoginUniversalRedirectPath(location));
+    }
+  }, [hasSession, location]);
+
+  if (!hasSession) {
+    return null;
   }
 
   const hasAccess = hasPermissionGroupAccess({

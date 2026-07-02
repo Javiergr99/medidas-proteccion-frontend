@@ -84,7 +84,7 @@ export default function MedidasListPage() {
   });
 
   function handleGoToDashboard() {
-    navigate(routes.dashboard);
+    window.location.assign(routes.loginUniversalDashboard);
   }
 
   function handleGoToList() {
@@ -105,7 +105,7 @@ export default function MedidasListPage() {
   }
 
   function handleViewProfile() {
-    navigate(`${routes.profile}?mode=view`);
+    window.location.assign(`${routes.loginUniversalProfile}?mode=view`);
   }
 
   function handleCreateRecord() {
@@ -133,10 +133,8 @@ export default function MedidasListPage() {
     try {
       await logout();
     } finally {
-      navigate(routes.login, {
-        replace: true,
-      });
-    }
+      window.location.replace(routes.loginUniversalLogout);
+      }
   }
 
   function renderContent() {

@@ -1,12 +1,23 @@
-import http from "../../../api/http";
+import api from "../../../api/axios";
+
+export function normalizeRegistroSession(response) {
+  if (!response) return null;
+
+  return {
+    registroId: response.id || response.registro_id || "",
+    idMp: response.id_mp || response.idMp || "",
+    estadoActual:
+      response.estado_actual || response.estadoActual || "En captura",
+  };
+}
 
 export async function createRegistroRequest(payload) {
-  const response = await http.post("/registros/", payload);
+  const response = await api.post("/registros/", payload);
   return response.data;
 }
 
 export async function updateDatosGeneralesRequest({ registroId, payload }) {
-  const response = await http.patch(
+  const response = await api.patch(
     `/registros/${registroId}/datos-generales`,
     payload
   );
@@ -14,8 +25,11 @@ export async function updateDatosGeneralesRequest({ registroId, payload }) {
   return response.data;
 }
 
-export async function saveImpresionDiagnosticaRequest({ registroId, payload }) {
-  const response = await http.put(
+export async function saveImpresionDiagnosticaRequest({
+  registroId,
+  payload,
+}) {
+  const response = await api.put(
     `/registros/${registroId}/impresion-diagnostica`,
     payload
   );
@@ -27,7 +41,7 @@ export async function saveIntervencionMultidisciplinariaRequest({
   registroId,
   payload,
 }) {
-  const response = await http.put(
+  const response = await api.put(
     `/registros/${registroId}/intervencion-multidisciplinaria`,
     payload
   );
@@ -36,7 +50,7 @@ export async function saveIntervencionMultidisciplinariaRequest({
 }
 
 export async function savePlanRestitucionRequest({ registroId, payload }) {
-  const response = await http.put(
+  const response = await api.put(
     `/registros/${registroId}/plan-restitucion`,
     payload
   );
@@ -44,38 +58,16 @@ export async function savePlanRestitucionRequest({ registroId, payload }) {
   return response.data;
 }
 
+export async function sendRegistroRevisionRequest(registroId) {
+  const response = await api.post(`/registros/${registroId}/enviar-revision`);
+  return response.data;
+}
+
 export async function saveMedidasProteccionRequest({ registroId, payload }) {
-  const response = await http.put(
+  const response = await api.put(
     `/registros/${registroId}/medidas-proteccion`,
     payload
   );
 
   return response.data;
-}
-
-export async function saveCierreCasoRequest({ registroId, payload }) {
-  const response = await http.put(
-    `/registros/${registroId}/cierre-caso`,
-    payload
-  );
-
-  return response.data;
-}
-
-export async function sendRegistroRevisionRequest(registroId) {
-  const response = await http.post(`/registros/${registroId}/enviar-revision`);
-  return response.data;
-}
-
-export function normalizeRegistroSession(registro) {
-  if (!registro?.id || !registro?.id_mp) {
-    return null;
-  }
-
-  return {
-    registroId: String(registro.id),
-    idMp: String(registro.id_mp),
-    estadoActual: registro.estado_actual || "En captura",
-    registro,
-  };
 }

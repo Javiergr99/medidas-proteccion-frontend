@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 
 import DatosGeneralesCatalogFields from "./DatosGeneralesCatalogFields";
 import DatosGeneralesContextFields from "./DatosGeneralesContextFields";
+import DatosGeneralesDiscapacidadFields from "./DatosGeneralesDiscapacidadFields";
 import DatosGeneralesIdentityFields from "./DatosGeneralesIdentityFields";
 import DatosGeneralesSectionCard from "./DatosGeneralesSectionCard";
 import MediaFiliacionFields from "./MediaFiliacionFields";
@@ -53,6 +54,27 @@ export default function DatosGeneralesIdentificacionForm({
           />
         </DatosGeneralesSectionCard>
 
+        <section className="mp-discapacidad-card">
+          <div className="mp-discapacidad-card-header">
+            <h3 className="mp-discapacidad-card-title">
+              Discapacidad del NNA
+            </h3>
+
+            <p className="mp-discapacidad-card-description">
+              Registra si el NNA presenta discapacidad. Si aplica, podrás
+              capturar una o más discapacidades con subtipo, severidad y
+              especificación cuando sea requerida.
+            </p>
+          </div>
+
+          <DatosGeneralesDiscapacidadFields
+            form={form}
+            errors={errors}
+            catalogos={catalogos}
+            onFieldChange={onFieldChange}
+          />
+        </section>
+
         <DatosGeneralesSectionCard
           title="Media filiación"
           description="Rasgos físicos del NNA. Esta información puede completarse si está disponible."
@@ -85,6 +107,8 @@ const styles = `
   .mp-datos-form {
     display: grid;
     gap: 22px;
+    width: 100%;
+    min-width: 0;
   }
 
   .mp-datos-header {
@@ -92,6 +116,8 @@ const styles = `
     align-items: flex-start;
     justify-content: space-between;
     gap: 18px;
+    width: 100%;
+    min-width: 0;
   }
 
   .mp-datos-title {
@@ -117,6 +143,52 @@ const styles = `
   .mp-datos-sections {
     display: grid;
     gap: 18px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mp-discapacidad-card {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border-radius: 24px;
+    background: linear-gradient(180deg, #ffffff 0%, rgba(251,250,248,0.72) 100%);
+    border: 1px solid rgba(152,152,154,0.16);
+    box-shadow: 0 10px 26px rgba(19,50,46,0.04);
+    padding: 24px;
+    overflow: hidden;
+    transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  }
+
+  .mp-discapacidad-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(188,149,92,0.24);
+    box-shadow: 0 14px 32px rgba(19,50,46,0.055);
+  }
+
+  .mp-discapacidad-card-header {
+    margin-bottom: 20px;
+    max-width: 980px;
+  }
+
+  .mp-discapacidad-card-title {
+    margin: 0;
+    color: #13322e;
+    font-family: "Noto Sans", sans-serif;
+    font-size: clamp(1.02rem, 1.3vw, 1.16rem);
+    font-weight: 950;
+    line-height: 1.18;
+    letter-spacing: -0.025em;
+  }
+
+  .mp-discapacidad-card-description {
+    max-width: 900px;
+    margin: 6px 0 0;
+    color: #64748b;
+    font-family: "Noto Sans", sans-serif;
+    font-size: 0.84rem;
+    font-weight: 600;
+    line-height: 1.55;
   }
 
   @media (max-width: 720px) {
@@ -126,6 +198,11 @@ const styles = `
 
     .mp-datos-sections {
       gap: 16px;
+    }
+
+    .mp-discapacidad-card {
+      border-radius: 20px;
+      padding: 18px;
     }
   }
 `;

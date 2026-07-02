@@ -17,6 +17,8 @@ import {
   persistPendingTwoFactorChallenge,
 } from "../utils/storage";
 
+import { consumeExternalAuthSessionFromUrl } from "../utils/externalAuthRedirect";
+
 import {
   clearTwoFactorTempSession,
   getTwoFactorTempSession,
@@ -26,13 +28,6 @@ import {
 
 const AuthContext = createContext(null);
 
-/**
- * Normaliza un reto 2FA para que internamente siempre use:
- * {
- *   tempUserId: string,
- *   status: "pending_setup" | "pending_2fa"
- * }
- */
 function normalizeTwoFactorChallenge(challenge) {
   if (!challenge) return null;
 
@@ -59,15 +54,16 @@ function normalizeTwoFactorChallenge(challenge) {
   };
 }
 
-/**
- * Construye el estado inicial de autenticación.
- *
- * Lee:
- * - Sesión final: access token + refresh token + auth_user.
- * - Reto 2FA persistido.
- * - Respaldo temporal 2FA: temp_2fa_user_id + temp_2fa_status.
- */
 function buildInitialAuthState() {
+  /**
+   * MP puede recibir la sesión desde Login Universal mediante:
+   * http://localhost:5173/medidas#auth_bridge=...
+   *
+   * Esto se consume antes de leer localStorage para que los guards
+   * detecten sesión desde el primer render.
+   */
+  consumeExternalAuthSessionFromUrl();
+
   const { token, refreshToken, tokenType, user } = getStoredAuthSession();
 
   const storedPendingTwoFactor = normalizeTwoFactorChallenge(
@@ -107,14 +103,6 @@ function buildInitialAuthState() {
 export function AuthProvider({ children }) {
   const [authState, setAuthState] = useState(buildInitialAuthState);
 
-  /**
-   * Completa el login final.
-   *
-   * Se llama después de:
-   * - POST /enable
-   * - POST /login/2fa
-   * - POST /refresh
-   */
   const completeLogin = useCallback(
     ({ token, refreshToken, tokenType, user }) => {
       persistAuthSession({
@@ -140,13 +128,6 @@ export function AuthProvider({ children }) {
     []
   );
 
-  /**
-   * Inicia el reto 2FA.
-   *
-   * Se llama después de POST /login cuando backend responde:
-   * - pending_setup
-   * - pending_2fa
-   */
   const startTwoFactorChallenge = useCallback((challenge) => {
     const normalizedChallenge = normalizeTwoFactorChallenge(challenge);
 
@@ -186,12 +167,6 @@ export function AuthProvider({ children }) {
     });
   }, []);
 
-  /**
-   * Actualiza parcialmente el reto 2FA.
-   *
-   * Ejemplo:
-   * - Guardar qrImageUrl después de llamar POST /setup.
-   */
   const updatePendingTwoFactorChallenge = useCallback((partialData) => {
     setAuthState((prev) => {
       const nextChallenge = normalizeTwoFactorChallenge({
@@ -225,9 +200,6 @@ export function AuthProvider({ children }) {
     });
   }, []);
 
-  /**
-   * Limpia únicamente el reto 2FA pendiente.
-   */
   const clearTwoFactorChallenge = useCallback(() => {
     clearPendingTwoFactorChallenge();
     clearTwoFactorTempSession();
@@ -239,9 +211,6 @@ export function AuthProvider({ children }) {
     }));
   }, []);
 
-  /**
-   * Limpia la sesión local.
-   */
   const clearLocalSession = useCallback(() => {
     clearStoredAuthSession();
     clearPendingTwoFactorChallenge();
@@ -259,12 +228,6 @@ export function AuthProvider({ children }) {
     });
   }, []);
 
-  /**
-   * Cierra sesión completa.
-   *
-   * Intenta invalidar el refresh_token en backend.
-   * Si backend falla, de todos modos limpia frontend local.
-   */
   const logout = useCallback(async () => {
     const { refreshToken } = getStoredAuthSession();
 

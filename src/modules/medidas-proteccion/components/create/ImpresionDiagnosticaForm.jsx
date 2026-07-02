@@ -20,7 +20,7 @@ export default function ImpresionDiagnosticaForm({
     <Box>
       <SectionHeader
         title="Impresión diagnóstica"
-        description="Captura la información médica, religiosa e idiomática del NNA."
+        description="Registra la información médica, religiosa e idiomática del NNA conforme al contrato actual del expediente."
       />
 
       <Box
@@ -31,11 +31,12 @@ export default function ImpresionDiagnosticaForm({
             lg: "repeat(2, minmax(0, 1fr))",
           },
           gap: { xs: 2, md: 2.2 },
+          alignItems: "stretch",
         }}
       >
         <SectionCard
           title="Condición de salud"
-          description="Registra si existe una enfermedad crónica identificada."
+          description="Información relacionada con enfermedad crónica o grave."
         >
           <Box
             sx={{
@@ -47,10 +48,11 @@ export default function ImpresionDiagnosticaForm({
                   : "1fr",
               },
               gap: { xs: 2, md: 2.1 },
+              alignItems: "start",
             }}
           >
             <MedidasSelectField
-              label="Enfermedad crónica"
+              label="Enfermedad crónica o grave"
               name="enfermedad_cronica"
               value={form.enfermedad_cronica}
               options={YES_NO_OPTIONS}
@@ -75,7 +77,7 @@ export default function ImpresionDiagnosticaForm({
 
         <SectionCard
           title="Idioma y contexto cultural"
-          description="Captura religión, idioma principal y lengua indígena cuando aplique."
+          description="Información religiosa, idioma principal y lengua indígena."
         >
           <Box
             sx={{
@@ -85,6 +87,7 @@ export default function ImpresionDiagnosticaForm({
                 md: "repeat(2, minmax(0, 1fr))",
               },
               gap: { xs: 2, md: 2.1 },
+              alignItems: "start",
             }}
           >
             <MedidasTextField
@@ -179,7 +182,8 @@ function SectionCard({ title, description, children }) {
       sx={{
         height: "100%",
         borderRadius: { xs: "20px", md: "24px" },
-        backgroundColor: "#ffffff",
+        background:
+          "linear-gradient(180deg, #ffffff 0%, rgba(251,250,248,0.72) 100%)",
         border: "1px solid rgba(152,152,154,0.16)",
         boxShadow: "0 10px 26px rgba(19,50,46,0.04)",
         p: { xs: 2, md: 2.35 },

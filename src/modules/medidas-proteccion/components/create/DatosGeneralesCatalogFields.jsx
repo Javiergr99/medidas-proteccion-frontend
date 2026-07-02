@@ -5,30 +5,20 @@ import { MedidasSelectField, MedidasTextField } from "./MedidasFormControls";
 function getCatalogItemById(options, value) {
   if (!Array.isArray(options)) return null;
 
-  return (
-    options.find((option) => String(option.id) === String(value)) || null
-  );
+  return options.find((option) => String(option.id) === String(value)) || null;
 }
 
-function RequiresSpecificationNotice({ children }) {
-  return (
-    <div
-      style={{
-        gridColumn: "1 / -1",
-        border: "1px solid rgba(188,149,92,0.28)",
-        borderRadius: 14,
-        background: "rgba(221,201,163,0.16)",
-        color: "#735827",
-        fontFamily: "Noto Sans, sans-serif",
-        fontSize: "0.82rem",
-        fontWeight: 700,
-        lineHeight: 1.5,
-        padding: "11px 13px",
-      }}
-    >
-      {children}
-    </div>
-  );
+function normalizeText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function isCatalogYesOption(options, value) {
+  const selectedOption = getCatalogItemById(options, value);
+  return normalizeText(selectedOption?.descripcion) === "si";
 }
 
 export default function DatosGeneralesCatalogFields({
@@ -48,8 +38,14 @@ export default function DatosGeneralesCatalogFields({
   );
 
   const isMexicana = selectedNacionalidad?.es_mexicana === true;
+
   const escolaridadRequiereEspecificacion =
     selectedEscolaridad?.requiere_especificacion === true;
+
+  const tienePertenenciaIndigena = isCatalogYesOption(
+    catalogos.opcion_respuesta,
+    form.pertenencia_indigena_id
+  );
 
   return (
     <>
@@ -65,13 +61,11 @@ export default function DatosGeneralesCatalogFields({
       {isMexicana ? (
         <MedidasSelectField
           label="Entidad federativa de nacimiento"
-          name="lugar_nacimiento"
-          value={form.lugar_nacimiento}
+          name="entidad_federativa_id"
+          value={form.entidad_federativa_id}
           options={catalogos.entidad_federativa}
-          valueKey="descripcion"
-          labelKey="descripcion"
           onChange={onFieldChange}
-          error={errors.lugar_nacimiento}
+          error={errors.entidad_federativa_id}
         />
       ) : (
         <MedidasTextField
@@ -80,7 +74,7 @@ export default function DatosGeneralesCatalogFields({
           value={form.lugar_nacimiento}
           onChange={onFieldChange}
           error={errors.lugar_nacimiento}
-          inputProps={{ maxLength: 50 }}
+          inputProps={{ maxLength: 100 }}
         />
       )}
 
@@ -94,12 +88,14 @@ export default function DatosGeneralesCatalogFields({
       />
 
       {escolaridadRequiereEspecificacion ? (
-        <RequiresSpecificationNotice>
-          La escolaridad seleccionada requiere especificación. El backend aún no
-          recibe una variable para guardar esa especificación en Datos Generales,
-          por lo que no se habilita un campo adicional hasta que se confirme el
-          contrato.
-        </RequiresSpecificationNotice>
+        <MedidasTextField
+          label="Especificación de escolaridad"
+          name="especificacion_escolaridad"
+          value={form.especificacion_escolaridad}
+          onChange={onFieldChange}
+          error={errors.especificacion_escolaridad}
+          inputProps={{ maxLength: 120 }}
+        />
       ) : null}
 
       <MedidasSelectField
@@ -119,6 +115,17 @@ export default function DatosGeneralesCatalogFields({
         onChange={onFieldChange}
         error={errors.pertenencia_indigena_id}
       />
+
+      {tienePertenenciaIndigena ? (
+        <MedidasSelectField
+          label="Pertenencia indígena específica"
+          name="pertenencia_indigena_especifica_id"
+          value={form.pertenencia_indigena_especifica_id}
+          options={catalogos.pertenencia_indigena}
+          onChange={onFieldChange}
+          error={errors.pertenencia_indigena_especifica_id}
+        />
+      ) : null}
 
       <MedidasSelectField
         label="Vivió situación de calle"
@@ -149,10 +156,7 @@ DatosGeneralesCatalogFields.propTypes = {
     entidad_federativa: PropTypes.array.isRequired,
     escolaridad: PropTypes.array.isRequired,
     opcion_respuesta: PropTypes.array.isRequired,
+    pertenencia_indigena: PropTypes.array.isRequired,
   }).isRequired,
   onFieldChange: PropTypes.func.isRequired,
-};
-
-RequiresSpecificationNotice.propTypes = {
-  children: PropTypes.node.isRequired,
 };

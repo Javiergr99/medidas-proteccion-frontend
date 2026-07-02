@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useReducer } from "react";
+﻿import { useCallback, useEffect, useMemo, useReducer } from "react";
 
-import { getErrorMessage } from "../../auth/helpers/auth.helper";
+import { getErrorMessage } from "../../../utils/errorMessage";
 import {
   MEDIDAS_ESTADOS,
   MEDIDAS_ITEMS_PER_PAGE,
@@ -180,7 +180,7 @@ export function useMedidasList({ canRead }) {
         type: MEDIDAS_LIST_ACTIONS.FETCH_FAILED,
         payload: getErrorMessage(
           error,
-          "No fue posible cargar los registros de Medidas de Protección."
+          "No fue posible cargar los registros de Medidas de ProtecciÃ³n."
         ),
       });
     }

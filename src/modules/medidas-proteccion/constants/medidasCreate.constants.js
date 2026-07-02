@@ -4,148 +4,285 @@ export const MEDIDAS_CREATE_SECTIONS = [
   {
     key: "datos_generales",
     label: "Datos generales",
-    title: "Datos Generales de Identificación",
-    description:
-      "Captura la información principal de identificación, contexto y catálogos del expediente.",
+    title: "Datos generales",
+    description: "Identificación, información general y contexto del expediente.",
   },
   {
     key: "impresion_diagnostica",
     label: "Impresión diagnóstica",
-    title: "Impresión Diagnóstica",
-    description:
-      "Registra información médica, religión, idioma y lengua indígena.",
+    title: "Impresión diagnóstica",
+    description: "Datos médicos, culturales y de comunicación del NNA.",
   },
   {
     key: "intervencion_multidisciplinaria",
     label: "Intervención multidisciplinaria",
-    title: "Intervención Multidisciplinaria",
-    description:
-      "Captura la derivación, lugar de intervención, diagnósticos, asesoría legal y representación jurídica.",
+    title: "Intervención multidisciplinaria",
+    description: "Intervención, diagnósticos, asesoría y representación jurídica.",
   },
   {
     key: "plan_restitucion",
     label: "Plan de restitución",
-    title: "Plan de Restitución de Derechos",
-    description: "Sección pendiente de integración.",
+    title: "Plan de restitución",
+    description: "Derechos vulnerados y fecha de elaboración del plan.",
   },
   {
     key: "medidas_proteccion",
     label: "Medidas de protección",
-    title: "Medidas de Protección",
-    description: "Sección pendiente de integración.",
+    title: "Medidas de protección",
+    description: "Medidas urgentes y especiales dictadas para el expediente.",
   },
   {
     key: "cierre_caso",
     label: "Cierre de caso",
-    title: "Cierre de Caso",
-    description: "Sección pendiente de integración.",
+    title: "Cierre de caso",
+    description: "Información final del expediente y motivo de cierre.",
   },
 ];
 
 export const YES_NO_OPTIONS = [
-  { value: "si", label: "Sí" },
-  { value: "no", label: "No" },
-];
-
-export const DOCUMENTO_IDENTIFICACION_OPTIONS = [
-  { value: "acta_nacimiento", label: "Acta de nacimiento" },
-  { value: "curp", label: "CURP" },
-  { value: "pasaporte", label: "Pasaporte" },
-  { value: "documento_migratorio", label: "Documento migratorio" },
-  { value: "constancia_identidad", label: "Constancia de identidad" },
-  { value: "sin_documento", label: "Sin documento" },
-  { value: "otro", label: "Otro" },
-];
-
-export const TIPO_IDENTIFICACION_OPTIONS = [
-  { value: "oficial", label: "Oficial" },
-  { value: "no_oficial", label: "No oficial" },
-  { value: "migratoria", label: "Migratoria" },
-  { value: "escolar", label: "Escolar" },
-  { value: "medica", label: "Médica" },
-  { value: "otro", label: "Otro" },
-];
-
-export const IDENTIFICACION_OPTIONS = DOCUMENTO_IDENTIFICACION_OPTIONS;
-
-export const CALIDAD_MIGRATORIA_OPTIONS = [
-  { value: "regular", label: "Regular" },
-  { value: "irregular", label: "Irregular" },
-  { value: "solicitante_refugio", label: "Solicitante de refugio" },
-  { value: "refugiado", label: "Refugiado" },
-  { value: "no_aplica", label: "No aplica" },
-  { value: "sin_informacion", label: "Sin información" },
-];
-
-export const PARENTESCO_OPTIONS = [
-  { value: "madre", label: "Madre" },
-  { value: "padre", label: "Padre" },
-  { value: "abuela", label: "Abuela" },
-  { value: "abuelo", label: "Abuelo" },
-  { value: "hermana", label: "Hermana" },
-  { value: "hermano", label: "Hermano" },
-  { value: "tia", label: "Tía" },
-  { value: "tio", label: "Tío" },
-  { value: "tutor", label: "Tutor/a" },
-  { value: "otro", label: "Otro" },
+  {
+    value: "si",
+    label: "Sí",
+  },
+  {
+    value: "no",
+    label: "No",
+  },
 ];
 
 export const IDIOMA_OPTIONS = [
-  { value: "Español", label: "Español" },
-  { value: "Inglés", label: "Inglés" },
-  { value: "Francés", label: "Francés" },
-  { value: "Lengua indígena", label: "Lengua indígena" },
-  { value: "Otro", label: "Otro" },
-  { value: "Se desconoce", label: "Se desconoce" },
+  {
+    value: "ESPAÑOL",
+    label: "Español",
+  },
+  {
+    value: "INGLÉS",
+    label: "Inglés",
+  },
+  {
+    value: "FRANCÉS",
+    label: "Francés",
+  },
+  {
+    value: "PORTUGUÉS",
+    label: "Portugués",
+  },
+  {
+    value: "LENGUA INDÍGENA",
+    label: "Lengua indígena",
+  },
+  {
+    value: "OTRO",
+    label: "Otro",
+  },
+  {
+    value: "SE DESCONOCE",
+    label: "Se desconoce",
+  },
 ];
 
 export const LENGUA_INDIGENA_OPTIONS = [
-  { value: "Náhuatl", label: "Náhuatl" },
-  { value: "Maya", label: "Maya" },
-  { value: "Mixteco", label: "Mixteco" },
-  { value: "Zapoteco", label: "Zapoteco" },
-  { value: "Tseltal", label: "Tseltal" },
-  { value: "Tsotsil", label: "Tsotsil" },
-  { value: "Otomí", label: "Otomí" },
-  { value: "Totonaco", label: "Totonaco" },
-  { value: "Mazateco", label: "Mazateco" },
-  { value: "Chol", label: "Chol" },
-  { value: "Otra", label: "Otra" },
+  {
+    value: "NÁHUATL",
+    label: "Náhuatl",
+  },
+  {
+    value: "MAYA",
+    label: "Maya",
+  },
+  {
+    value: "MIXTECO",
+    label: "Mixteco",
+  },
+  {
+    value: "ZAPOTECO",
+    label: "Zapoteco",
+  },
+  {
+    value: "TSOTSIL",
+    label: "Tsotsil",
+  },
+  {
+    value: "TSELTAL",
+    label: "Tseltal",
+  },
+  {
+    value: "OTOMÍ",
+    label: "Otomí",
+  },
+  {
+    value: "TOTONACO",
+    label: "Totonaco",
+  },
+  {
+    value: "MAZATECO",
+    label: "Mazateco",
+  },
+  {
+    value: "CH’OL",
+    label: "Ch’ol",
+  },
+  {
+    value: "OTRA",
+    label: "Otra",
+  },
+  {
+    value: "SE DESCONOCE",
+    label: "Se desconoce",
+  },
 ];
 
-export const ACTOR_DERIVACION_OPTIONS = [
-  { value: "publico", label: "Público" },
-  { value: "privado", label: "Privado" },
-  { value: "sociedad_civil", label: "Sociedad civil" },
-  { value: "autoridad_migratoria", label: "Autoridad migratoria" },
-  { value: "procuraduria", label: "Procuraduría" },
-  { value: "otro", label: "Otro" },
+export const TIPO_LENGUA_INDIGENA_OPTIONS = LENGUA_INDIGENA_OPTIONS;
+
+export const DOCUMENTO_IDENTIFICACION_OPTIONS = [
+  {
+    value: "sin_documento",
+    label: "Sin documento",
+  },
+  {
+    value: "con_documento",
+    label: "Sí cuenta con documento",
+  },
 ];
 
-export const LUGAR_INTERVENCION_OPTIONS = [
-  { value: "aeropuerto_aicm", label: "Aeropuerto AICM" },
-  { value: "estacion_migratoria", label: "Estación migratoria" },
-  { value: "centro_asistencia_social", label: "Centro de asistencia social" },
-  { value: "oficinas_procuraduria", label: "Oficinas de procuraduría" },
-  { value: "domicilio", label: "Domicilio" },
-  { value: "hospital", label: "Hospital" },
-  { value: "Otras", label: "Otras" },
+export const TIPO_IDENTIFICACION_OPTIONS = [
+  {
+    value: "acta_nacimiento",
+    label: "Acta de nacimiento",
+  },
+  {
+    value: "curp",
+    label: "CURP",
+  },
+  {
+    value: "pasaporte",
+    label: "Pasaporte",
+  },
+  {
+    value: "documento_migratorio",
+    label: "Documento migratorio",
+  },
+  {
+    value: "credencial_escolar",
+    label: "Credencial escolar",
+  },
+  {
+    value: "constancia_identidad",
+    label: "Constancia de identidad",
+  },
+  {
+    value: "otro",
+    label: "Otro",
+  },
 ];
 
-export const DIAGNOSTICO_TIPO_OPTIONS = [
-  { value: "inicial_juridico", label: "Inicial jurídico" },
-  { value: "psicologico", label: "Psicológico" },
-  { value: "trabajo_social", label: "Trabajo social" },
-  { value: "medico", label: "Médico" },
-  { value: "educativo", label: "Educativo" },
-  { value: "otro", label: "Otro" },
+export const IDENTIFICACION_OPTIONS = TIPO_IDENTIFICACION_OPTIONS;
+
+export const CALIDAD_MIGRATORIA_OPTIONS = [
+  {
+    value: "no_aplica",
+    label: "No aplica",
+  },
+  {
+    value: "mexicana",
+    label: "Mexicana",
+  },
+  {
+    value: "residente_temporal",
+    label: "Residente temporal",
+  },
+  {
+    value: "residente_permanente",
+    label: "Residente permanente",
+  },
+  {
+    value: "visitante",
+    label: "Visitante",
+  },
+  {
+    value: "solicitante_refugio",
+    label: "Solicitante de refugio",
+  },
+  {
+    value: "refugiada",
+    label: "Persona refugiada",
+  },
+  {
+    value: "retornada",
+    label: "Persona retornada",
+  },
+  {
+    value: "situacion_irregular",
+    label: "Situación migratoria irregular",
+  },
+  {
+    value: "se_desconoce",
+    label: "Se desconoce",
+  },
 ];
+
+export const PARENTESCO_OPTIONS = [
+  {
+    value: "madre",
+    label: "Madre",
+  },
+  {
+    value: "padre",
+    label: "Padre",
+  },
+  {
+    value: "abuela",
+    label: "Abuela",
+  },
+  {
+    value: "abuelo",
+    label: "Abuelo",
+  },
+  {
+    value: "hermana",
+    label: "Hermana",
+  },
+  {
+    value: "hermano",
+    label: "Hermano",
+  },
+  {
+    value: "tia",
+    label: "Tía",
+  },
+  {
+    value: "tio",
+    label: "Tío",
+  },
+  {
+    value: "persona_tutora",
+    label: "Persona tutora",
+  },
+  {
+    value: "persona_cuidadora",
+    label: "Persona cuidadora",
+  },
+  {
+    value: "otro",
+    label: "Otro",
+  },
+];
+
+export const DISCAPACIDAD_EMPTY_ITEM = {
+  categoria_discapacidad_id: "",
+  subtipo_discapacidad_id: "",
+  severidad_discapacidad_id: "",
+  especifique_otros: "",
+  requiere_especificacion: false,
+};
 
 export const INITIAL_DATOS_GENERALES_FORM = {
   nna_id: "",
+
   asignacion_expediente: "",
   numero_expediente: "",
   lugar_apertura: "",
+
   nombre: "",
   primer_apellido: "",
   segundo_apellido: "",
@@ -153,14 +290,28 @@ export const INITIAL_DATOS_GENERALES_FORM = {
   edad: "",
   sexo_id: "",
   lugar_nacimiento: "",
+
   cuenta_con_curp: "",
   curp: "",
+
   nacionalidad_id: "",
+  entidad_federativa_id: "",
+
   escolaridad_id: "",
+  especificacion_escolaridad: "",
+
   afrodescendencia_id: "",
   pertenencia_indigena_id: "",
+  pertenencia_indigena_especifica_id: "",
+
   id_situacion_calle: "",
   id_reclutamiento_delincuencia: "",
+
+  tiene_discapacidad: "",
+  discapacidades: [],
+
+  estatura: "",
+  senas_particulares: "",
   complexion_id: "",
   tez_id: "",
   color_cabello_id: "",
@@ -168,6 +319,7 @@ export const INITIAL_DATOS_GENERALES_FORM = {
   tipo_cabello_id: "",
   color_ojos_id: "",
   tipo_ojos_id: "",
+
   region_origen: "",
   pais_residencia: "",
   documento_identificacion: "",
@@ -192,14 +344,34 @@ export const INITIAL_INTERVENCION_MULTIDISCIPLINARIA_FORM = {
   otro_lugar_intervencion: "",
   entidad_federativa_conocimiento: "",
   lugar_realizacion_intervencion: "",
+
   diagnostico_elaborado: "",
   detalles_diagnosticos: [],
+
   asesoria_legal: "",
   asesoria_legal_servidor_publico: "",
   asesoria_legal_fecha: "",
+
   representacion_juridica: "",
   representacion_juridica_servidor_publico: "",
   representacion_juridica_fecha: "",
+};
+
+export const INITIAL_PLAN_RESTITUCION_FORM = {
+  fecha_elaboracion: "",
+  derechos_vulnerados: [],
+};
+
+export const INITIAL_MEDIDAS_PROTECCION_FORM = {
+  medidas_urgentes: [],
+  medidas_especiales: [],
+  observaciones: "",
+};
+
+export const INITIAL_CIERRE_CASO_FORM = {
+  fecha_cierre: "",
+  motivo_cierre: "",
+  observaciones_cierre: "",
 };
 
 export const INITIAL_MEDIDAS_CREATE_FORMS = {
@@ -207,4 +379,7 @@ export const INITIAL_MEDIDAS_CREATE_FORMS = {
   impresion_diagnostica: INITIAL_IMPRESION_DIAGNOSTICA_FORM,
   intervencion_multidisciplinaria:
     INITIAL_INTERVENCION_MULTIDISCIPLINARIA_FORM,
+  plan_restitucion: INITIAL_PLAN_RESTITUCION_FORM,
+  medidas_proteccion: INITIAL_MEDIDAS_PROTECCION_FORM,
+  cierre_caso: INITIAL_CIERRE_CASO_FORM,
 };

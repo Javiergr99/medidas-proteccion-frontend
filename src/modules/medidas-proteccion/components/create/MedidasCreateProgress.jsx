@@ -195,7 +195,6 @@ function StepItem({
       type="button"
       disableRipple
       disableTouchRipple
-      disableFocusRipple
       onClick={onClick}
       sx={{
         width: 145,

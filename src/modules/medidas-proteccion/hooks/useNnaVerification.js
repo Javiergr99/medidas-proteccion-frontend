@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-import { getErrorMessage } from "../../auth/helpers/auth.helper";
+import { getErrorMessage } from "../../../utils/errorMessage";
 import { verifyNnaRequest } from "../services/nna.service";
 import {
   getVerificationSuccessMessage,
