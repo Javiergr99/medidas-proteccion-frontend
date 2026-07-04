@@ -10,10 +10,15 @@ import {
 
 import {
   getLoginUniversalRedirectPath,
+  getLoginUniversalUrl,
   redirectToLoginUniversal,
 } from "../utils/externalAuthRedirect";
 
-import { markSessionActivity } from "../utils/sessionInactivity";
+import {
+  SESSION_INACTIVITY_REASON,
+  broadcastSessionInactivityLogout,
+  markSessionActivity,
+} from "../utils/sessionInactivity";
 
 import endpoints from "./endpoints";
 
@@ -21,6 +26,8 @@ const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 const AUTH_API_URL =
   import.meta.env.VITE_AUTH_API_URL || "http://127.0.0.1:8001";
+
+const BACKEND_INACTIVITY_CODE = "SESSION_EXPIRED_INACTIVITY";
 
 const PUBLIC_AUTH_ENDPOINTS = [
   "/auth/login",
@@ -47,6 +54,7 @@ const TEMP_2FA_STORAGE_KEYS = [
 ];
 
 let refreshRequestPromise = null;
+let backendInactivityLogoutStarted = false;
 
 const api = axios.create({
   baseURL: API_URL,
@@ -122,6 +130,46 @@ function redirectToLoginIfNeeded() {
   }
 }
 
+function redirectToLoginByBackendInactivity() {
+  const loginUrl = new URL(getLoginUniversalUrl());
+
+  loginUrl.searchParams.set("reason", SESSION_INACTIVITY_REASON);
+
+  window.location.replace(loginUrl.toString());
+}
+
+function getBackendErrorCode(error) {
+  return String(error?.response?.data?.code || "");
+}
+
+function isBackendInactivityError(error) {
+  return (
+    error?.response?.status === 401 &&
+    getBackendErrorCode(error) === BACKEND_INACTIVITY_CODE
+  );
+}
+
+function handleBackendInactivityLogout() {
+  if (backendInactivityLogoutStarted) return;
+
+  backendInactivityLogoutStarted = true;
+
+  clearFrontendAuthState();
+  broadcastSessionInactivityLogout();
+  redirectToLoginByBackendInactivity();
+}
+
+function shouldMarkSessionActivityFromResponse(response) {
+  const requestUrl = response?.config?.url || "";
+  const pathname = getRequestPathname(requestUrl);
+
+  if (pathname === "/auth/refresh") {
+    return true;
+  }
+
+  return Boolean(response?.config?.sessionActivityRequest);
+}
+
 async function requestTokenRefresh(refreshToken) {
   if (!refreshRequestPromise) {
     refreshRequestPromise = api
@@ -158,7 +206,7 @@ api.interceptors.request.use(
 
     if (token && !isPublicAuthRequest) {
       config.headers.Authorization = `Bearer ${token}`;
-      markSessionActivity();
+      config.sessionActivityRequest = true;
     }
 
     return config;
@@ -167,8 +215,19 @@ api.interceptors.request.use(
 );
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (shouldMarkSessionActivityFromResponse(response)) {
+      markSessionActivity();
+    }
+
+    return response;
+  },
   async (error) => {
+    if (isBackendInactivityError(error)) {
+      handleBackendInactivityLogout();
+      return Promise.reject(error);
+    }
+
     const status = error?.response?.status;
     const originalRequest = error?.config || {};
     const requestUrl = originalRequest.url || "";
@@ -210,7 +269,12 @@ api.interceptors.response.use(
           return api(originalRequest);
         } catch (refreshError) {
           clearFrontendAuthState();
-          redirectToLoginIfNeeded();
+
+          if (isBackendInactivityError(refreshError)) {
+            handleBackendInactivityLogout();
+          } else {
+            redirectToLoginIfNeeded();
+          }
 
           return Promise.reject(refreshError);
         }
