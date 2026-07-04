@@ -1,28 +1,8 @@
-import { persistAuthSession } from "./storage";
-
-const DEFAULT_LOGIN_UNIVERSAL_URL = "http://localhost:5174/login";
-const AUTH_BRIDGE_PARAM =
-  import.meta.env.VITE_AUTH_BRIDGE_PARAM || "auth_bridge";
-const AUTH_BRIDGE_MAX_AGE_MS = 2 * 60 * 1000;
+﻿const DEFAULT_LOGIN_UNIVERSAL_URL = "http://localhost:5174/login";
+const REDIRECT_CODE_PARAM = "code";
 
 export function getLoginUniversalUrl() {
   return import.meta.env.VITE_LOGIN_UNIVERSAL_URL || DEFAULT_LOGIN_UNIVERSAL_URL;
-}
-
-function decodeBase64Url(value) {
-  const base64 = String(value || "")
-    .replace(/-/g, "+")
-    .replace(/_/g, "/");
-
-  const paddedBase64 = base64.padEnd(
-    base64.length + ((4 - (base64.length % 4)) % 4),
-    "="
-  );
-
-  const binaryValue = window.atob(paddedBase64);
-  const bytes = Uint8Array.from(binaryValue, (char) => char.charCodeAt(0));
-
-  return JSON.parse(new TextDecoder().decode(bytes));
 }
 
 function getCurrentAbsoluteUrl(targetPath = "") {
@@ -33,96 +13,44 @@ function getCurrentAbsoluteUrl(targetPath = "") {
   return `${window.location.origin}${targetPath || window.location.pathname}`;
 }
 
-function removeAuthBridgeFromUrl() {
-  const hashValue = window.location.hash?.startsWith("#")
-    ? window.location.hash.slice(1)
-    : window.location.hash || "";
+function removeRedirectCodeFromUrlObject(url) {
+  url.searchParams.delete(REDIRECT_CODE_PARAM);
+  return url;
+}
 
-  if (!hashValue) return;
+export function getExternalRedirectCodeFromUrl() {
+  const searchParams = new URLSearchParams(window.location.search || "");
+  return searchParams.get(REDIRECT_CODE_PARAM) || "";
+}
 
-  const hashParams = new URLSearchParams(hashValue);
+export function hasExternalRedirectCodeInUrl() {
+  return Boolean(getExternalRedirectCodeFromUrl());
+}
 
-  if (!hashParams.has(AUTH_BRIDGE_PARAM)) return;
+export function removeExternalRedirectCodeFromUrl() {
+  const url = new URL(window.location.href);
 
-  hashParams.delete(AUTH_BRIDGE_PARAM);
+  removeRedirectCodeFromUrlObject(url);
 
-  const nextHash = hashParams.toString();
-  const cleanUrl = `${window.location.pathname}${window.location.search}${
-    nextHash ? `#${nextHash}` : ""
-  }`;
+  const cleanUrl = `${url.pathname}${url.search}${url.hash}`;
 
   window.history.replaceState(window.history.state, document.title, cleanUrl);
 }
 
-function getAuthBridgePayloadFromUrl() {
-  const hashValue = window.location.hash?.startsWith("#")
-    ? window.location.hash.slice(1)
-    : window.location.hash || "";
+export function getCleanCurrentRedirectUrl(targetPath = "") {
+  const currentUrl = new URL(getCurrentAbsoluteUrl(targetPath));
 
-  if (!hashValue) return null;
+  removeRedirectCodeFromUrlObject(currentUrl);
 
-  const hashParams = new URLSearchParams(hashValue);
-  const encodedPayload = hashParams.get(AUTH_BRIDGE_PARAM);
+  currentUrl.hash = "";
 
-  if (!encodedPayload) {
-    return null;
-  }
-
-  try {
-    return decodeBase64Url(encodedPayload);
-  } catch (error) {
-    console.warn("No fue posible leer la sesión recibida del login:", error);
-    return null;
-  }
-}
-
-function isValidAuthBridgePayload(payload) {
-  if (!payload || typeof payload !== "object") {
-    return false;
-  }
-
-  if (!payload.token) {
-    return false;
-  }
-
-  const issuedAt = Number(payload.issuedAt);
-
-  if (!Number.isFinite(issuedAt)) {
-    return false;
-  }
-
-  return Date.now() - issuedAt <= AUTH_BRIDGE_MAX_AGE_MS;
-}
-
-export function consumeExternalAuthSessionFromUrl() {
-  const payload = getAuthBridgePayloadFromUrl();
-
-  if (!payload) {
-    return null;
-  }
-
-  removeAuthBridgeFromUrl();
-
-  if (!isValidAuthBridgePayload(payload)) {
-    return null;
-  }
-
-  const session = {
-    token: payload.token,
-    refreshToken: payload.refreshToken || null,
-    tokenType: payload.tokenType || "bearer",
-    user: payload.user || null,
-  };
-
-  persistAuthSession(session);
-
-  return session;
+  return currentUrl.toString();
 }
 
 export function buildLoginUniversalRedirectUrl(targetPath = "") {
   const loginUrl = getLoginUniversalUrl();
 
-  const currentUrl = getCurrentAbsoluteUrl(targetPath);
+  const currentUrl = getCleanCurrentRedirectUrl(targetPath);
   const url = new URL(loginUrl);
 
   url.searchParams.set("redirect", currentUrl);
@@ -140,5 +68,11 @@ export function getLoginUniversalRedirectPath(location) {
   const search = location?.search || window.location.search || "";
   const hash = location?.hash || window.location.hash || "";
 
-  return `${pathname}${search}${hash}`;
+  const url = new URL(`${pathname}${search}${hash}`, window.location.origin);
+
+  removeRedirectCodeFromUrlObject(url);
+
+  url.hash = "";
+
+  return `${url.pathname}${url.search}${url.hash}`;
 }

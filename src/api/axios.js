@@ -1,4 +1,4 @@
-import axios from "axios";
+﻿import axios from "axios";
 
 import {
   clearAuthSession,
@@ -8,7 +8,14 @@ import {
   persistAuthSession,
 } from "../utils/storage";
 
-import { redirectToLoginUniversal } from "../utils/externalAuthRedirect";
+import {
+  getLoginUniversalRedirectPath,
+  redirectToLoginUniversal,
+} from "../utils/externalAuthRedirect";
+
+import { markSessionActivity } from "../utils/sessionInactivity";
+
+import endpoints from "./endpoints";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -16,12 +23,14 @@ const AUTH_API_URL =
   import.meta.env.VITE_AUTH_API_URL || "http://127.0.0.1:8001";
 
 const PUBLIC_AUTH_ENDPOINTS = [
-  "/login",
-  "/setup",
-  "/enable",
-  "/login/2fa",
-  "/refresh",
-  "/logout",
+  "/auth/login",
+  "/auth/setup",
+  "/auth/enable",
+  "/auth/login/2fa",
+  "/auth/refresh",
+  "/auth/logout",
+  "/auth/exchange-code",
+  "/auth/restablecer-password",
 ];
 
 const AUTH_FLOW_PAGES = [
@@ -32,6 +41,7 @@ const AUTH_FLOW_PAGES = [
 
 const TEMP_2FA_STORAGE_KEYS = [
   "temp_2fa_user_id",
+  "temp_2fa_token",
   "temp_2fa_status",
   "temp_2fa_expires_at",
 ];
@@ -61,7 +71,7 @@ function isAuthServiceEndpoint(url = "") {
   const pathname = getRequestPathname(url);
 
   return (
-    PUBLIC_AUTH_ENDPOINTS.includes(pathname) ||
+    pathname.startsWith("/auth/") ||
     pathname === "/users" ||
     pathname === "/users/me" ||
     pathname === "/users/catalogo-permisos" ||
@@ -108,9 +118,7 @@ function clearFrontendAuthState() {
 
 function redirectToLoginIfNeeded() {
   if (!isCurrentAuthFlowPage()) {
-    redirectToLoginUniversal(
-      `${window.location.pathname}${window.location.search}${window.location.hash}`
-    );
+    redirectToLoginUniversal(getLoginUniversalRedirectPath());
   }
 }
 
@@ -118,7 +126,7 @@ async function requestTokenRefresh(refreshToken) {
   if (!refreshRequestPromise) {
     refreshRequestPromise = api
       .post(
-        "/refresh",
+        endpoints.auth.refresh,
         {
           refresh_token: refreshToken || "",
         },
@@ -144,11 +152,13 @@ api.interceptors.request.use(
 
     const requestUrl = config.url || "";
     const shouldUseAuthService = isAuthServiceEndpoint(requestUrl);
+    const isPublicAuthRequest = isPublicAuthEndpoint(requestUrl);
 
     config.baseURL = shouldUseAuthService ? AUTH_API_URL : API_URL;
 
-    if (token && !isPublicAuthEndpoint(requestUrl)) {
+    if (token && !isPublicAuthRequest) {
       config.headers.Authorization = `Bearer ${token}`;
+      markSessionActivity();
     }
 
     return config;
