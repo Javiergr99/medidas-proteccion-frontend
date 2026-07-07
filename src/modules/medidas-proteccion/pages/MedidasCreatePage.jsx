@@ -458,7 +458,7 @@ export default function MedidasCreatePage() {
     }
 
     const payload = buildMedidasProteccionPayload(
-      forms.medidas_proteccion || getEmptyMedidasProteccionForm()
+      forms.medidas_proteccion
     );
 
     const response = await saveMedidasProteccionRequest({

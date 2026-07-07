@@ -51,7 +51,7 @@ function getDateInputValue(value) {
 }
 
 function matchesRecordFilters(record, filters) {
-  const matchesId = includesText(record.id, filters.id);
+  const matchesId = includesText(record.id_mp || record.id, filters.id);
   const matchesName = includesText(
     record.nombre_completo,
     filters.nombre_completo

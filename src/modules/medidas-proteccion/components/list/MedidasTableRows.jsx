@@ -1,13 +1,18 @@
 import PropTypes from "prop-types";
 import {
   Box,
+  CircularProgress,
   IconButton,
+  Stack,
   TableCell,
   TableRow,
   Tooltip,
   Typography,
 } from "@mui/material";
 
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import KeyboardReturnRoundedIcon from "@mui/icons-material/KeyboardReturnRounded";
+import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 
 import MedidasStatusChip from "./MedidasStatusChip";
@@ -36,10 +41,21 @@ function formatDate(value) {
   return DATE_FORMATTER.format(parsedDate);
 }
 
+function getRecordFolio(record) {
+  return record.id_mp || record.id;
+}
+
 export default function MedidasTableRows({
   rows,
   canViewDetail,
+  canSendReview,
+  canApprove,
+  canReturn,
+  actionLoadingId,
   onViewRecord,
+  onSendReview,
+  onApprove,
+  onReturn,
 }) {
   if (rows.length === 0) {
     return <MedidasTableEmptyRow />;
@@ -94,7 +110,7 @@ export default function MedidasTableRows({
           }}
         >
           {record.edad || record.edad === 0
-            ? `${record.edad} años`
+            ? record.edad + " años"
             : "Sin información"}
         </Box>
       </TableCell>
@@ -130,10 +146,17 @@ export default function MedidasTableRows({
       </TableCell>
 
       <TableCell align="center" sx={tableBodyCellStyles}>
-        <RecordActionButton
+        <RecordActionButtons
           record={record}
           canViewDetail={canViewDetail}
+          canSendReview={canSendReview}
+          canApprove={canApprove}
+          canReturn={canReturn}
+          actionLoadingId={actionLoadingId}
           onViewRecord={onViewRecord}
+          onSendReview={onSendReview}
+          onApprove={onApprove}
+          onReturn={onReturn}
         />
       </TableCell>
     </TableRow>
@@ -141,6 +164,8 @@ export default function MedidasTableRows({
 }
 
 function RecordIdCell({ record }) {
+  const folio = getRecordFolio(record);
+
   return (
     <TableCell
       sx={{
@@ -148,26 +173,28 @@ function RecordIdCell({ record }) {
         pl: 2.2,
       }}
     >
-      <Box
-        component="span"
-        sx={{
-          display: "inline-flex",
-          alignItems: "center",
-          px: 1.05,
-          py: 0.45,
-          borderRadius: "12px",
-          color: "#13322e",
-          background:
-            "linear-gradient(135deg, rgba(19,50,46,0.08), rgba(221,201,163,0.22))",
-          border: "1px solid rgba(19,50,46,0.11)",
-          fontFamily: "Noto Sans, sans-serif",
-          fontWeight: 950,
-          fontSize: "0.78rem",
-          letterSpacing: "0.01em",
-        }}
-      >
-        {formatCellValue(record.id)}
-      </Box>
+      <Tooltip title={record.id ? "UUID interno: " + record.id : ""}>
+        <Box
+          component="span"
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            px: 1.05,
+            py: 0.45,
+            borderRadius: "12px",
+            color: "#13322e",
+            background:
+              "linear-gradient(135deg, rgba(19,50,46,0.08), rgba(221,201,163,0.22))",
+            border: "1px solid rgba(19,50,46,0.11)",
+            fontFamily: "Noto Sans, sans-serif",
+            fontWeight: 950,
+            fontSize: "0.78rem",
+            letterSpacing: "0.01em",
+          }}
+        >
+          {formatCellValue(folio)}
+        </Box>
+      </Tooltip>
     </TableCell>
   );
 }
@@ -219,42 +246,154 @@ function RecordNameCell({ record }) {
   );
 }
 
-function RecordActionButton({ record, canViewDetail, onViewRecord }) {
+function RecordActionButtons({
+  record,
+  canViewDetail,
+  canSendReview,
+  canApprove,
+  canReturn,
+  actionLoadingId,
+  onViewRecord,
+  onSendReview,
+  onApprove,
+  onReturn,
+}) {
+  const isBusy = Boolean(actionLoadingId);
+  const isEnCaptura = record.estado_actual === "En captura";
+  const isEnRevision = record.estado_actual === "En revisión";
+
+  const showSendReview = canSendReview && isEnCaptura;
+  const showApprove = canApprove && isEnRevision;
+  const showReturn = canReturn && isEnRevision;
+
   return (
-    <Tooltip
-      title={
-        canViewDetail
-          ? "Ver detalle"
-          : "Detalle pendiente de endpoint confirmado"
-      }
+    <Stack
+      direction="row"
+      spacing={0.75}
+      justifyContent="center"
+      alignItems="center"
+      sx={{ minWidth: 156 }}
     >
+      <ActionIconButton
+        title={
+          canViewDetail
+            ? "Ver detalle"
+            : "Detalle pendiente de GET /registros/{registro_id}"
+        }
+        disabled={!canViewDetail || isBusy}
+        onClick={() => onViewRecord(record)}
+        colorMode="detail"
+      >
+        <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+      </ActionIconButton>
+
+      {showSendReview ? (
+        <ActionIconButton
+          title="Enviar a revisión"
+          disabled={isBusy}
+          onClick={() => onSendReview(record)}
+          colorMode="send"
+        >
+          {actionLoadingId === "send:" + record.id ? (
+            <CircularProgress size={16} color="inherit" />
+          ) : (
+            <SendRoundedIcon sx={{ fontSize: 18 }} />
+          )}
+        </ActionIconButton>
+      ) : null}
+
+      {showApprove ? (
+        <ActionIconButton
+          title="Aprobar expediente"
+          disabled={isBusy}
+          onClick={() => onApprove(record)}
+          colorMode="approve"
+        >
+          {actionLoadingId === "approve:" + record.id ? (
+            <CircularProgress size={16} color="inherit" />
+          ) : (
+            <CheckCircleRoundedIcon sx={{ fontSize: 18 }} />
+          )}
+        </ActionIconButton>
+      ) : null}
+
+      {showReturn ? (
+        <ActionIconButton
+          title="Devolver a captura"
+          disabled={isBusy}
+          onClick={() => onReturn(record)}
+          colorMode="return"
+        >
+          {actionLoadingId === "return:" + record.id ? (
+            <CircularProgress size={16} color="inherit" />
+          ) : (
+            <KeyboardReturnRoundedIcon sx={{ fontSize: 18 }} />
+          )}
+        </ActionIconButton>
+      ) : null}
+    </Stack>
+  );
+}
+
+function getActionButtonSx(colorMode) {
+  const variants = {
+    detail: {
+      color: "#13322e",
+      hoverColor: "#ffffff",
+      hoverBackground: "linear-gradient(135deg, #13322e 0%, #0e2724 100%)",
+    },
+    send: {
+      color: "#611232",
+      hoverColor: "#ffffff",
+      hoverBackground: "linear-gradient(135deg, #611232 0%, #9d2449 100%)",
+    },
+    approve: {
+      color: "#047857",
+      hoverColor: "#ffffff",
+      hoverBackground: "linear-gradient(135deg, #047857 0%, #065f46 100%)",
+    },
+    return: {
+      color: "#a57f2c",
+      hoverColor: "#ffffff",
+      hoverBackground: "linear-gradient(135deg, #a57f2c 0%, #7c5f21 100%)",
+    },
+  };
+
+  const variant = variants[colorMode] || variants.detail;
+
+  return {
+    width: 36,
+    height: 36,
+    color: variant.color,
+    background:
+      "linear-gradient(135deg, rgba(19,50,46,0.08), rgba(255,255,255,0.92))",
+    border: "1px solid rgba(19,50,46,0.12)",
+    boxShadow: "0 8px 18px rgba(15,23,42,0.045)",
+    "&:hover": {
+      color: variant.hoverColor,
+      background: variant.hoverBackground,
+      boxShadow: "0 12px 24px rgba(19,50,46,0.18)",
+    },
+    "&.Mui-disabled": {
+      color: "rgba(100,116,139,0.35)",
+      background: "rgba(100,116,139,0.06)",
+      borderColor: "rgba(100,116,139,0.10)",
+      boxShadow: "none",
+    },
+  };
+}
+
+function ActionIconButton({ title, disabled, onClick, colorMode, children }) {
+  return (
+    <Tooltip title={title}>
       <span>
         <IconButton
           size="small"
-          disabled={!canViewDetail}
-          onClick={() => onViewRecord(record)}
-          sx={{
-            width: 36,
-            height: 36,
-            color: "#13322e",
-            background:
-              "linear-gradient(135deg, rgba(19,50,46,0.08), rgba(255,255,255,0.92))",
-            border: "1px solid rgba(19,50,46,0.12)",
-            boxShadow: "0 8px 18px rgba(15,23,42,0.045)",
-            "&:hover": {
-              color: "#ffffff",
-              background: "linear-gradient(135deg, #13322e 0%, #0e2724 100%)",
-              boxShadow: "0 12px 24px rgba(19,50,46,0.18)",
-            },
-            "&.Mui-disabled": {
-              color: "rgba(100,116,139,0.35)",
-              background: "rgba(100,116,139,0.06)",
-              borderColor: "rgba(100,116,139,0.10)",
-              boxShadow: "none",
-            },
-          }}
+          disabled={disabled}
+          onClick={onClick}
+          sx={getActionButtonSx(colorMode)}
         >
-          <VisibilityRoundedIcon sx={{ fontSize: 19 }} />
+          {children}
         </IconButton>
       </span>
     </Tooltip>
@@ -294,6 +433,7 @@ function MedidasTableEmptyRow() {
 
 const recordShape = PropTypes.shape({
   id: PropTypes.string.isRequired,
+  id_mp: PropTypes.string,
   nombre_completo: PropTypes.string.isRequired,
   estado_actual: PropTypes.string.isRequired,
   lugar_apertura: PropTypes.string,
@@ -307,7 +447,14 @@ const recordShape = PropTypes.shape({
 MedidasTableRows.propTypes = {
   rows: PropTypes.arrayOf(recordShape).isRequired,
   canViewDetail: PropTypes.bool.isRequired,
+  canSendReview: PropTypes.bool.isRequired,
+  canApprove: PropTypes.bool.isRequired,
+  canReturn: PropTypes.bool.isRequired,
+  actionLoadingId: PropTypes.string,
   onViewRecord: PropTypes.func.isRequired,
+  onSendReview: PropTypes.func.isRequired,
+  onApprove: PropTypes.func.isRequired,
+  onReturn: PropTypes.func.isRequired,
 };
 
 RecordIdCell.propTypes = {
@@ -318,8 +465,23 @@ RecordNameCell.propTypes = {
   record: recordShape.isRequired,
 };
 
-RecordActionButton.propTypes = {
+RecordActionButtons.propTypes = {
   record: recordShape.isRequired,
   canViewDetail: PropTypes.bool.isRequired,
+  canSendReview: PropTypes.bool.isRequired,
+  canApprove: PropTypes.bool.isRequired,
+  canReturn: PropTypes.bool.isRequired,
+  actionLoadingId: PropTypes.string,
   onViewRecord: PropTypes.func.isRequired,
+  onSendReview: PropTypes.func.isRequired,
+  onApprove: PropTypes.func.isRequired,
+  onReturn: PropTypes.func.isRequired,
+};
+
+ActionIconButton.propTypes = {
+  title: PropTypes.string.isRequired,
+  disabled: PropTypes.bool,
+  onClick: PropTypes.func.isRequired,
+  colorMode: PropTypes.string,
+  children: PropTypes.node.isRequired,
 };

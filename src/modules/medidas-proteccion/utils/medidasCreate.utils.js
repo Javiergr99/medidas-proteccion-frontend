@@ -784,6 +784,68 @@ export function validateMedidasProteccion(form = {}) {
 }
 
 
+function toNumberOrNull(value) {
+  if (value === "" || value === null || value === undefined) {
+    return null;
+  }
+
+  const numberValue = Number(value);
+
+  return Number.isNaN(numberValue) ? null : numberValue;
+}
+
+function toStringOrNull(value) {
+  const cleanValue = String(value || "").trim();
+  return cleanValue || null;
+}
+
+function toBooleanFromSiNo(value) {
+  return value === "si" || value === true || value === "true";
+}
+
+function toNullableBooleanFromSiNo(value) {
+  if (value === "" || value === null || value === undefined) {
+    return null;
+  }
+
+  return toBooleanFromSiNo(value);
+}
+
+function buildDiscapacidadesPayload(form) {
+  if (form.tiene_discapacidad !== "si") {
+    return [];
+  }
+
+  const discapacidades = Array.isArray(form.discapacidades)
+    ? form.discapacidades
+    : [];
+
+  return discapacidades.map((item) => ({
+    subtipo_discapacidad_id: toNumberOrNull(item.subtipo_discapacidad_id),
+    severidad_discapacidad_id: toNumberOrNull(item.severidad_discapacidad_id),
+    especifique_otros: toStringOrNull(item.especifique_otros),
+  }));
+}
+
+function buildDetallesDiagnosticosPayload(form) {
+  const diagnosticoElaborado = toNullableBooleanFromSiNo(
+    form.diagnostico_elaborado
+  );
+
+  if (diagnosticoElaborado !== true) {
+    return [];
+  }
+
+  const detallesDiagnosticos = Array.isArray(form.detalles_diagnosticos)
+    ? form.detalles_diagnosticos
+    : [];
+
+  return detallesDiagnosticos.map((item) => ({
+    tipo_diagnostico: toStringOrNull(item.tipo_diagnostico),
+    fecha_diagnostico: toStringOrNull(item.fecha_diagnostico),
+  }));
+}
+
 export function buildDatosGeneralesPayload(form) {
   const cuentaConCurp = hasCuentaConCurp(form.cuenta_con_curp);
 
@@ -1119,3 +1181,5 @@ export function validateCierreCaso(form = {}) {
 
   return errors;
 }
+
+

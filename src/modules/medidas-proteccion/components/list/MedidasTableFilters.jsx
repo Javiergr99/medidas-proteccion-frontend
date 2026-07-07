@@ -19,7 +19,7 @@ const FILTER_COLUMNS = [
   {
     key: "id",
     type: "text",
-    placeholder: "ID",
+    placeholder: "Folio MP",
     minWidth: 126,
     cellSx: { pl: 2.2 },
   },

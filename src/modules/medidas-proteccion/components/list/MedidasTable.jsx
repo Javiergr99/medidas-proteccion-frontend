@@ -27,7 +27,7 @@ const SCROLL_STEP = 420;
 
 const TABLE_COLUMNS = [
   {
-    label: "ID",
+    label: "Folio MP",
     sx: { pl: 2.2 },
   },
   {
@@ -96,8 +96,15 @@ export default function MedidasTable({
   rows,
   filters,
   canViewDetail,
+  canSendReview,
+  canApprove,
+  canReturn,
+  actionLoadingId,
   onFilterChange,
   onViewRecord,
+  onSendReview,
+  onApprove,
+  onReturn,
 }) {
   const tableContainerRef = useRef(null);
   const tableRef = useRef(null);
@@ -300,7 +307,14 @@ export default function MedidasTable({
                 <MedidasTableRows
                   rows={rows}
                   canViewDetail={canViewDetail}
+                  canSendReview={canSendReview}
+                  canApprove={canApprove}
+                  canReturn={canReturn}
+                  actionLoadingId={actionLoadingId}
                   onViewRecord={onViewRecord}
+                  onSendReview={onSendReview}
+                  onApprove={onApprove}
+                  onReturn={onReturn}
                 />
               </TableBody>
             </Table>
@@ -315,6 +329,7 @@ MedidasTable.propTypes = {
   rows: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.string.isRequired,
+      id_mp: PropTypes.string,
       nombre_completo: PropTypes.string.isRequired,
       estado_actual: PropTypes.string.isRequired,
       lugar_apertura: PropTypes.string,
@@ -337,6 +352,13 @@ MedidasTable.propTypes = {
     calidad_migratoria: PropTypes.string.isRequired,
   }).isRequired,
   canViewDetail: PropTypes.bool.isRequired,
+  canSendReview: PropTypes.bool.isRequired,
+  canApprove: PropTypes.bool.isRequired,
+  canReturn: PropTypes.bool.isRequired,
+  actionLoadingId: PropTypes.string,
   onFilterChange: PropTypes.func.isRequired,
   onViewRecord: PropTypes.func.isRequired,
+  onSendReview: PropTypes.func.isRequired,
+  onApprove: PropTypes.func.isRequired,
+  onReturn: PropTypes.func.isRequired,
 };

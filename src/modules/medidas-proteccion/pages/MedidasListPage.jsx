@@ -8,9 +8,17 @@ import { useAuth } from "../../../hooks/useAuth";
 import { getStoredAuthSession } from "../../../utils/storage";
 import { hasUserAction } from "../../../utils/rbac";
 
-import { MEDIDAS_PERMISSIONS } from "../constants/medidas.constants";
+import {
+  MEDIDAS_ESTADOS,
+  MEDIDAS_PERMISSIONS,
+} from "../constants/medidas.constants";
 import { MEDIDAS_CREATE_ROUTE } from "../constants/medidasCreate.constants";
 import { useMedidasList } from "../hooks/useMedidasList";
+import {
+  approveMedidasRegistro,
+  returnMedidasRegistro,
+  sendMedidasRegistroToReview,
+} from "../services/medidas.service";
 
 import MedidasListHeader from "../components/list/MedidasListHeader";
 import MedidasPagination from "../components/list/MedidasPagination";
@@ -51,6 +59,7 @@ export default function MedidasListPage() {
   const { user: authUser, logout } = useAuth();
 
   const [loggingOut, setLoggingOut] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState("");
 
   const storedSession = getStoredAuthSession();
   const user = authUser || storedSession?.user;
@@ -61,6 +70,12 @@ export default function MedidasListPage() {
   const canCreateRecord = hasUserAction(user, MEDIDAS_PERMISSIONS.CREATE);
 
   const canViewDetail = false;
+  const canSendReviewRecord = hasUserAction(
+    user,
+    MEDIDAS_PERMISSIONS.SEND_REVIEW
+  );
+  const canApproveRecord = hasUserAction(user, MEDIDAS_PERMISSIONS.APPROVE);
+  const canReturnRecord = hasUserAction(user, MEDIDAS_PERMISSIONS.RETURN);
 
   const {
     clearFilters,
@@ -112,13 +127,145 @@ export default function MedidasListPage() {
     navigate(MEDIDAS_CREATE_ROUTE);
   }
 
+  function getRecordFolio(record) {
+    return record?.id_mp || record?.id || "sin folio";
+  }
+
   function handleViewRecord(record) {
     enqueueSnackbar(
-      `El detalle del registro ${record.id} queda pendiente hasta que backend confirme GET /registros/{registro_id}.`,
+      `El detalle del registro ${getRecordFolio(
+        record
+      )} queda pendiente hasta que backend confirme GET /registros/{registro_id}.`,
       {
         variant: "info",
       }
     );
+  }
+
+  async function runRecordAction({
+    record,
+    actionKey,
+    successMessage,
+    operation,
+  }) {
+    if (!record?.id) {
+      enqueueSnackbar("No se pudo determinar el UUID interno del registro.", {
+        variant: "error",
+      });
+      return;
+    }
+
+    const loadingKey = `${actionKey}:${record.id}`;
+
+    if (actionLoadingId) return;
+
+    try {
+      setActionLoadingId(loadingKey);
+
+      await operation(record.id);
+
+      enqueueSnackbar(successMessage, {
+        variant: "success",
+      });
+
+      await loadRecords();
+    } catch (error) {
+      const detail = error?.response?.data?.detail;
+
+      enqueueSnackbar(
+        typeof detail === "string"
+          ? detail
+          : "No fue posible ejecutar la acción del expediente.",
+        {
+          variant: "error",
+        }
+      );
+
+      console.error("Error en acción de expediente:", error);
+    } finally {
+      setActionLoadingId("");
+    }
+  }
+
+  async function handleSendReviewRecord(record) {
+    if (record.estado_actual !== MEDIDAS_ESTADOS.EN_CAPTURA) {
+      enqueueSnackbar("Solo puedes enviar expedientes en captura.", {
+        variant: "warning",
+      });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `¿Deseas enviar a revisión el expediente ${getRecordFolio(record)}?`
+    );
+
+    if (!confirmed) return;
+
+    await runRecordAction({
+      record,
+      actionKey: "send",
+      successMessage: "Expediente enviado a revisión correctamente.",
+      operation: sendMedidasRegistroToReview,
+    });
+  }
+
+  async function handleApproveRecord(record) {
+    if (record.estado_actual !== MEDIDAS_ESTADOS.EN_REVISION) {
+      enqueueSnackbar("Solo puedes aprobar expedientes en revisión.", {
+        variant: "warning",
+      });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `¿Deseas aprobar el expediente ${getRecordFolio(record)}?`
+    );
+
+    if (!confirmed) return;
+
+    await runRecordAction({
+      record,
+      actionKey: "approve",
+      successMessage: "Expediente aprobado correctamente.",
+      operation: approveMedidasRegistro,
+    });
+  }
+
+  async function handleReturnRecord(record) {
+    if (record.estado_actual !== MEDIDAS_ESTADOS.EN_REVISION) {
+      enqueueSnackbar("Solo puedes devolver expedientes en revisión.", {
+        variant: "warning",
+      });
+      return;
+    }
+
+    const motivo = window.prompt(
+      `Captura el motivo de devolución del expediente ${getRecordFolio(
+        record
+      )}:`
+    );
+
+    if (motivo === null) return;
+
+    const cleanMotivo = String(motivo || "").trim();
+
+    if (!cleanMotivo) {
+      enqueueSnackbar("El motivo de devolución es obligatorio.", {
+        variant: "warning",
+      });
+      return;
+    }
+
+    await runRecordAction({
+      record,
+      actionKey: "return",
+      successMessage: "Expediente devuelto a captura correctamente.",
+      operation: (registroId) =>
+        returnMedidasRegistro({
+          registroId,
+          motivo: cleanMotivo,
+        }),
+    });
   }
 
   function handlePageChange(_, nextPage) {
@@ -165,8 +312,15 @@ export default function MedidasListPage() {
                 rows={visibleRecords}
                 filters={filters}
                 canViewDetail={canViewDetail}
+                canSendReview={canSendReviewRecord}
+                canApprove={canApproveRecord}
+                canReturn={canReturnRecord}
+                actionLoadingId={actionLoadingId}
                 onFilterChange={setFilter}
                 onViewRecord={handleViewRecord}
+                onSendReview={handleSendReviewRecord}
+                onApprove={handleApproveRecord}
+                onReturn={handleReturnRecord}
               />
             </Box>
 
