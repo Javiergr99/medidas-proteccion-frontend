@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Box } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSnackbar } from "notistack";
 
 import routes from "../../../app/routes";
@@ -32,6 +32,7 @@ import {
 
 import {
   createRegistroRequest,
+  fetchRegistroRequest,
   normalizeRegistroSession,
   saveImpresionDiagnosticaRequest,
   saveIntervencionMultidisciplinariaRequest,
@@ -48,6 +49,7 @@ import {
   buildIntervencionMultidisciplinariaPayload,
   buildCierreCasoPayload,
   buildMedidasProteccionPayload,
+  buildMedidasCreateFormsFromRegistro,
   buildNextCierreCasoForm,
   buildNextDatosGeneralesForm,
   buildNextImpresionDiagnosticaForm,
@@ -82,10 +84,13 @@ import {
 
 export default function MedidasCreatePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { enqueueSnackbar } = useSnackbar();
   const { user: authUser, logout } = useAuth();
 
   const [loggingOut, setLoggingOut] = useState(false);
+  const [loadingRecord, setLoadingRecord] = useState(false);
+  const [recordLoadError, setRecordLoadError] = useState("");
   const [saving, setSaving] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [registroSession, setRegistroSession] = useState(null);
@@ -96,6 +101,8 @@ export default function MedidasCreatePage() {
 
   const storedSession = getStoredAuthSession();
   const user = authUser || storedSession?.user || {};
+  const registroIdParam = searchParams.get("registroId") || "";
+  const isExistingRecordMode = Boolean(registroIdParam);
 
   const {
     catalogos,
@@ -111,11 +118,72 @@ export default function MedidasCreatePage() {
   const activeErrors = errorsBySection[activeSection] || {};
 
   const canShowCaptureFlow =
-    verification.isVerified && !verification.isBlocked;
+    isExistingRecordMode || (verification.isVerified && !verification.isBlocked);
 
   const estadoActual = registroSession?.estadoActual || "En captura";
   const isEditable = estadoActual === "En captura";
   const canSendReview = Boolean(registroSession?.registroId);
+
+  useEffect(() => {
+    if (!registroIdParam) return;
+
+    let isMounted = true;
+
+    async function loadExistingRecord() {
+      try {
+        setLoadingRecord(true);
+        setRecordLoadError("");
+
+        const response = await fetchRegistroRequest(registroIdParam);
+
+        if (!isMounted) return;
+
+        const nextSession = normalizeRegistroSession(response);
+
+        setRegistroSession(nextSession);
+        setForms(buildMedidasCreateFormsFromRegistro(response));
+        setCompletedSections(MEDIDAS_CREATE_SECTIONS.map((section) => section.key));
+        setErrorsBySection({});
+        setActiveSection("datos_generales");
+
+        enqueueSnackbar(
+          nextSession?.estadoActual === "En captura"
+            ? "Expediente cargado en modo edición."
+            : "Expediente cargado en modo solo lectura.",
+          {
+            variant: "success",
+            autoHideDuration: 3200,
+          }
+        );
+      } catch (error) {
+        if (!isMounted) return;
+
+        const detail = error?.response?.data?.detail;
+        const message =
+          typeof detail === "string"
+            ? detail
+            : "No fue posible cargar el expediente.";
+
+        setRecordLoadError(message);
+
+        enqueueSnackbar(message, {
+          variant: "error",
+        });
+
+        console.error("Error al cargar expediente:", error);
+      } finally {
+        if (isMounted) {
+          setLoadingRecord(false);
+        }
+      }
+    }
+
+    loadExistingRecord();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [registroIdParam, enqueueSnackbar]);
 
   function handleGoToDashboard() {
     window.location.assign(routes.loginUniversalDashboard);
@@ -782,7 +850,34 @@ export default function MedidasCreatePage() {
 
       <main className="mp-create-shell">
         <div className="mp-create-stack">
-          {!canShowCaptureFlow ? (
+          {loadingRecord ? (
+            <Alert
+              severity="info"
+              sx={{
+                borderRadius: "16px",
+                border: "1px solid rgba(152,152,154,0.18)",
+                backgroundColor: "#ffffff",
+                color: "#13322e",
+                fontFamily: "Noto Sans, sans-serif",
+                fontWeight: 750,
+              }}
+            >
+              Cargando expediente...
+            </Alert>
+          ) : recordLoadError ? (
+            <Alert
+              severity="error"
+              sx={{
+                borderRadius: "16px",
+                border: "1px solid rgba(157,36,73,0.18)",
+                backgroundColor: "#ffffff",
+                fontFamily: "Noto Sans, sans-serif",
+                fontWeight: 750,
+              }}
+            >
+              {recordLoadError}
+            </Alert>
+          ) : !canShowCaptureFlow ? (
             <NnaVerificationPanel
               catalogos={catalogos}
               catalogosLoading={catalogosLoading}

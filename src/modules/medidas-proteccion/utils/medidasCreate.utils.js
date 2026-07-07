@@ -1183,3 +1183,394 @@ export function validateCierreCaso(form = {}) {
 }
 
 
+function toFormString(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value);
+}
+
+function toFormDate(value) {
+  if (!value) return "";
+  return String(value).slice(0, 10);
+}
+
+function toSiNoFormValue(value) {
+  if (value === true || value === "true" || value === "si") {
+    return "si";
+  }
+
+  if (value === false || value === "false" || value === "no") {
+    return "no";
+  }
+
+  return "";
+}
+
+function getFirstDefined(...values) {
+  return values.find((value) => value !== null && value !== undefined);
+}
+
+function getCatalogFormValue(...values) {
+  const value = getFirstDefined(...values);
+
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  if (typeof value === "object") {
+    return toFormString(
+      value.id ||
+        value.id_catalogo ||
+        value.id_sexo ||
+        value.id_nacionalidad ||
+        value.id_escolaridad ||
+        value.id_entidad_federativa ||
+        value.id_categoria_discapacidad ||
+        value.id_subtipo_discapacidad ||
+        value.id_severidad_discapacidad ||
+        value.value ||
+        ""
+    );
+  }
+
+  return toFormString(value);
+}
+
+function normalizeRegistroList(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function buildDiscapacidadesFormFromRegistro({ registro, nna, datosGenerales }) {
+  const discapacidades = normalizeRegistroList(
+    getFirstDefined(
+      nna.discapacidades,
+      nna.discapacidad,
+      datosGenerales.discapacidades,
+      registro.discapacidades,
+      []
+    )
+  );
+
+  return discapacidades.map((item) => ({
+    categoria_discapacidad_id: getCatalogFormValue(
+      item.categoria_discapacidad_id,
+      item.categoria_id,
+      item.categoria_discapacidad
+    ),
+    subtipo_discapacidad_id: getCatalogFormValue(
+      item.subtipo_discapacidad_id,
+      item.subtipo_id,
+      item.subtipo_discapacidad
+    ),
+    severidad_discapacidad_id: getCatalogFormValue(
+      item.severidad_discapacidad_id,
+      item.severidad_id,
+      item.severidad_discapacidad
+    ),
+    especifique_otros: toFormString(item.especifique_otros),
+    requiere_especificacion: Boolean(
+      item.requiere_especificacion || item.especifique_otros
+    ),
+  }));
+}
+
+function buildMedidaUrgenteFormFromRegistro(item = {}) {
+  return {
+    numero_medida: toFormString(item.numero_medida),
+    autoridad_emitio: toFormString(item.autoridad_emitio),
+    fecha_medida: toFormDate(item.fecha_medida),
+    descripcion: toFormString(item.descripcion),
+  };
+}
+
+function buildMedidaEspecialFormFromRegistro(item = {}) {
+  return {
+    numero_medida: toFormString(item.numero_medida),
+    autoridad_emitio: toFormString(item.autoridad_emitio),
+    fecha_medida: toFormDate(item.fecha_medida),
+    descripcion: toFormString(item.descripcion),
+
+    medida_alojamiento_cas: toFormString(item.medida_alojamiento_cas),
+    tipo_centro: toFormString(item.tipo_centro),
+    nombre_razon_social: toFormString(item.nombre_razon_social),
+
+    determinacion_familiar: toFormString(item.determinacion_familiar),
+    determinacion_fecha: toFormDate(item.determinacion_fecha),
+    determinacion_descripcion: toFormString(item.determinacion_descripcion),
+
+    pronfac: toFormString(item.pronfac),
+    pronfac_fecha: toFormDate(item.pronfac_fecha),
+    pronfac_descripcion: toFormString(item.pronfac_descripcion),
+  };
+}
+
+export function buildMedidasCreateFormsFromRegistro(registro = {}) {
+  const initialForms = getInitialMedidasCreateForms();
+
+  const nna = registro.nna || {};
+  const datosGenerales = registro.datos_generales || {};
+  const mediaFiliacion =
+    nna.media_filiacion ||
+    datosGenerales.media_filiacion ||
+    registro.media_filiacion ||
+    {};
+  const especificaciones =
+    nna.especificaciones ||
+    datosGenerales.especificaciones ||
+    registro.especificaciones ||
+    {};
+
+  const discapacidades = buildDiscapacidadesFormFromRegistro({
+    registro,
+    nna,
+    datosGenerales,
+  });
+
+  const impresionDiagnostica = registro.impresion_diagnostica || {};
+  const intervencion = registro.intervencion_multidisciplinaria || {};
+  const planRestitucion = registro.plan_restitucion || {};
+  const medidasProteccion = registro.medidas_proteccion || {};
+  const cierreCaso = registro.cierre_caso || {};
+
+  const medidasEspeciales = normalizeRegistroList(
+    getFirstDefined(
+      medidasProteccion.medidas_especiales_list,
+      medidasProteccion.medidas_especiales,
+      []
+    )
+  ).map(buildMedidaEspecialFormFromRegistro);
+
+  const medidasUrgentes = normalizeRegistroList(
+    getFirstDefined(
+      medidasProteccion.medidas_urgentes_list,
+      medidasProteccion.medidas_urgentes,
+      []
+    )
+  ).map(buildMedidaUrgenteFormFromRegistro);
+
+  return {
+    datos_generales: {
+      ...initialForms.datos_generales,
+
+      nna_id: toFormString(nna.id_nna || datosGenerales.nna_id),
+
+      asignacion_expediente: toFormString(
+        datosGenerales.asignacion_expediente
+      ),
+      numero_expediente: toFormString(datosGenerales.numero_expediente),
+      lugar_apertura: toFormString(datosGenerales.lugar_apertura),
+
+      nombre: toFormString(nna.nombre || datosGenerales.nombre),
+      primer_apellido: toFormString(
+        nna.primer_apellido || datosGenerales.primer_apellido
+      ),
+      segundo_apellido: toFormString(
+        nna.segundo_apellido || datosGenerales.segundo_apellido
+      ),
+      fecha_nacimiento: toFormDate(
+        nna.fecha_nacimiento || datosGenerales.fecha_nacimiento
+      ),
+      edad: toFormString(
+        datosGenerales.edad ||
+          datosGenerales.edad_al_registrar ||
+          nna.edad ||
+          ""
+      ),
+      sexo_id: getCatalogFormValue(nna.sexo_id, datosGenerales.sexo_id, nna.sexo),
+      lugar_nacimiento: toFormString(
+        nna.lugar_nacimiento || datosGenerales.lugar_nacimiento
+      ),
+
+      cuenta_con_curp: toSiNoFormValue(
+        getFirstDefined(nna.cuenta_con_curp, datosGenerales.cuenta_con_curp)
+      ),
+      curp: toFormString(nna.curp || datosGenerales.curp),
+
+      nacionalidad_id: getCatalogFormValue(
+        nna.nacionalidad_id,
+        datosGenerales.nacionalidad_id,
+        nna.nacionalidad
+      ),
+      entidad_federativa_id: getCatalogFormValue(
+        especificaciones.entidad_federativa_id,
+        datosGenerales.entidad_federativa_id
+      ),
+
+      escolaridad_id: getCatalogFormValue(
+        nna.escolaridad_id,
+        datosGenerales.escolaridad_id,
+        nna.escolaridad
+      ),
+      especificacion_escolaridad: toFormString(
+        especificaciones.especificacion_escolaridad ||
+          datosGenerales.especificacion_escolaridad
+      ),
+
+      afrodescendencia_id: getCatalogFormValue(
+        nna.afrodescendencia_id,
+        nna.es_afrodescendiente_id,
+        datosGenerales.afrodescendencia_id
+      ),
+      pertenencia_indigena_id: getCatalogFormValue(
+        nna.pertenencia_indigena_id,
+        nna.tiene_pertenencia_indigena_id,
+        datosGenerales.pertenencia_indigena_id
+      ),
+      pertenencia_indigena_especifica_id: getCatalogFormValue(
+        especificaciones.pertenencia_indigena_especifica_id,
+        especificaciones.pertenencia_indigena_id,
+        datosGenerales.pertenencia_indigena_especifica_id
+      ),
+
+      id_situacion_calle: getCatalogFormValue(
+        nna.id_situacion_calle,
+        nna.situacion_calle_id,
+        datosGenerales.id_situacion_calle
+      ),
+      id_reclutamiento_delincuencia: getCatalogFormValue(
+        nna.id_reclutamiento_delincuencia,
+        nna.delincuencia_organizada_id,
+        datosGenerales.id_reclutamiento_delincuencia
+      ),
+
+      tiene_discapacidad: discapacidades.length ? "si" : toSiNoFormValue(
+        getFirstDefined(datosGenerales.tiene_discapacidad, nna.tiene_discapacidad)
+      ),
+      discapacidades,
+
+      estatura: toFormString(mediaFiliacion.estatura || datosGenerales.estatura),
+      senas_particulares: toFormString(
+        mediaFiliacion.senas_particulares || datosGenerales.senas_particulares
+      ),
+      complexion_id: getCatalogFormValue(
+        mediaFiliacion.complexion_id,
+        datosGenerales.complexion_id
+      ),
+      tez_id: getCatalogFormValue(mediaFiliacion.tez_id, datosGenerales.tez_id),
+      color_cabello_id: getCatalogFormValue(
+        mediaFiliacion.color_cabello_id,
+        datosGenerales.color_cabello_id
+      ),
+      largo_cabello_id: getCatalogFormValue(
+        mediaFiliacion.largo_cabello_id,
+        datosGenerales.largo_cabello_id
+      ),
+      tipo_cabello_id: getCatalogFormValue(
+        mediaFiliacion.tipo_cabello_id,
+        datosGenerales.tipo_cabello_id
+      ),
+      color_ojos_id: getCatalogFormValue(
+        mediaFiliacion.color_ojos_id,
+        datosGenerales.color_ojos_id
+      ),
+      tipo_ojos_id: getCatalogFormValue(
+        mediaFiliacion.tipo_ojos_id,
+        datosGenerales.tipo_ojos_id
+      ),
+
+      region_origen: toFormString(datosGenerales.region_origen),
+      pais_residencia: toFormString(datosGenerales.pais_residencia),
+      documento_identificacion: toFormString(
+        datosGenerales.documento_identificacion
+      ),
+      tipo_identificacion: toFormString(datosGenerales.tipo_identificacion),
+      calidad_migratoria: toFormString(datosGenerales.calidad_migratoria),
+      acompanado: toFormString(datosGenerales.acompanado),
+      parentesco_acompanante: toFormString(
+        datosGenerales.parentesco_acompanante
+      ),
+    },
+
+    impresion_diagnostica: {
+      ...initialForms.impresion_diagnostica,
+      enfermedad_cronica: toSiNoFormValue(
+        impresionDiagnostica.enfermedad_cronica
+      ),
+      tipo_enfermedad: toFormString(impresionDiagnostica.tipo_enfermedad),
+      religion: toFormString(impresionDiagnostica.religion),
+      idioma: toFormString(impresionDiagnostica.idioma),
+      habla_lengua_indigena: toSiNoFormValue(
+        impresionDiagnostica.habla_lengua_indigena
+      ),
+      tipo_lengua_indigena: toFormString(
+        impresionDiagnostica.tipo_lengua_indigena
+      ),
+    },
+
+    intervencion_multidisciplinaria: {
+      ...initialForms.intervencion_multidisciplinaria,
+      actor_derivacion: toFormString(intervencion.actor_derivacion),
+      lugar_intervencion: toFormString(intervencion.lugar_intervencion),
+      otro_lugar_intervencion: toFormString(
+        intervencion.otro_lugar_intervencion
+      ),
+      entidad_federativa_conocimiento: toFormString(
+        intervencion.entidad_federativa_conocimiento
+      ),
+      lugar_realizacion_intervencion: toFormString(
+        intervencion.lugar_realizacion_intervencion
+      ),
+      diagnostico_elaborado: toSiNoFormValue(intervencion.diagnostico_elaborado),
+      detalles_diagnosticos: normalizeRegistroList(
+        intervencion.detalles_diagnosticos
+      ).map((item) => ({
+        tipo_diagnostico: toFormString(item.tipo_diagnostico),
+        fecha_diagnostico: toFormDate(item.fecha_diagnostico),
+      })),
+      asesoria_legal: toSiNoFormValue(intervencion.asesoria_legal),
+      asesoria_legal_servidor_publico: toFormString(
+        intervencion.asesoria_legal_servidor_publico
+      ),
+      asesoria_legal_fecha: toFormDate(intervencion.asesoria_legal_fecha),
+      representacion_juridica: toSiNoFormValue(
+        intervencion.representacion_juridica
+      ),
+      representacion_juridica_servidor_publico: toFormString(
+        intervencion.representacion_juridica_servidor_publico
+      ),
+      representacion_juridica_fecha: toFormDate(
+        intervencion.representacion_juridica_fecha
+      ),
+    },
+
+    plan_restitucion: {
+      ...initialForms.plan_restitucion,
+      fecha_elaboracion: toFormDate(planRestitucion.fecha_elaboracion),
+      derechos_vulnerados: normalizeRegistroList(
+        planRestitucion.derechos_vulnerados
+      ),
+    },
+
+    medidas_proteccion: {
+      ...initialForms.medidas_proteccion,
+      medida_emitida_procuraduria: toSiNoFormValue(
+        medidasProteccion.medida_emitida_procuraduria
+      ),
+      medidas_especiales_list: medidasEspeciales,
+      existen_medidas_urgentes: toSiNoFormValue(
+        medidasProteccion.existen_medidas_urgentes
+      ),
+      medidas_urgentes_list: medidasUrgentes,
+    },
+
+    cierre_caso: {
+      ...initialForms.cierre_caso,
+      tipo_egreso: toFormString(cierreCaso.tipo_egreso),
+      egreso_planificado: toFormString(cierreCaso.egreso_planificado),
+      egreso_no_planificado: toFormString(cierreCaso.egreso_no_planificado),
+      fecha_egreso: toFormDate(cierreCaso.fecha_egreso),
+      descripcion_egreso: toFormString(cierreCaso.descripcion_egreso),
+      determinacion_interes_superior: toFormString(
+        cierreCaso.determinacion_interes_superior
+      ),
+      existe_cierre_caso: toSiNoFormValue(cierreCaso.existe_cierre_caso),
+      razon_cierre_caso: toFormString(cierreCaso.razon_cierre_caso),
+      descripcion_cierre_imposibilidad: toFormString(
+        cierreCaso.descripcion_cierre_imposibilidad
+      ),
+    },
+  };
+}
+

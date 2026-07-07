@@ -29,6 +29,7 @@
       `/registros/${registroId}/enviar-revision`,
     aprobar: (registroId) => `/registros/${registroId}/aprobar`,
     devolver: (registroId) => `/registros/${registroId}/devolver`,
+    detail: (registroId) => `/registros/${registroId}`,
   },
 };
 

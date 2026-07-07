@@ -11,6 +11,11 @@ export function normalizeRegistroSession(response) {
   };
 }
 
+export async function fetchRegistroRequest(registroId) {
+  const response = await api.get(`/registros/${registroId}`);
+  return response.data;
+}
+
 export async function createRegistroRequest(payload) {
   const response = await api.post("/registros/", payload);
   return response.data;

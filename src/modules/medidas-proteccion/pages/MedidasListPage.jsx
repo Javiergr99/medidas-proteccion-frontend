@@ -69,7 +69,7 @@ export default function MedidasListPage() {
   const canReadRecords = hasUserAction(user, MEDIDAS_PERMISSIONS.READ);
   const canCreateRecord = hasUserAction(user, MEDIDAS_PERMISSIONS.CREATE);
 
-  const canViewDetail = false;
+  const canViewDetail = true;
   const canSendReviewRecord = hasUserAction(
     user,
     MEDIDAS_PERMISSIONS.SEND_REVIEW
@@ -132,14 +132,14 @@ export default function MedidasListPage() {
   }
 
   function handleViewRecord(record) {
-    enqueueSnackbar(
-      `El detalle del registro ${getRecordFolio(
-        record
-      )} queda pendiente hasta que backend confirme GET /registros/{registro_id}.`,
-      {
-        variant: "info",
-      }
-    );
+    if (!record?.id) {
+      enqueueSnackbar("No se pudo determinar el UUID interno del registro.", {
+        variant: "error",
+      });
+      return;
+    }
+
+    navigate(`${MEDIDAS_CREATE_ROUTE}?registroId=${record.id}`);
   }
 
   async function runRecordAction({

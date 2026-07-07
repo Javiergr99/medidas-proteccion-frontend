@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import KeyboardReturnRoundedIcon from "@mui/icons-material/KeyboardReturnRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
@@ -276,15 +277,19 @@ function RecordActionButtons({
     >
       <ActionIconButton
         title={
-          canViewDetail
-            ? "Ver detalle"
-            : "Detalle pendiente de GET /registros/{registro_id}"
+          isEnCaptura
+            ? "Editar expediente"
+            : "Ver detalle del expediente"
         }
         disabled={!canViewDetail || isBusy}
         onClick={() => onViewRecord(record)}
-        colorMode="detail"
+        colorMode={isEnCaptura ? "send" : "detail"}
       >
-        <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+        {isEnCaptura ? (
+          <EditNoteRoundedIcon sx={{ fontSize: 19 }} />
+        ) : (
+          <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+        )}
       </ActionIconButton>
 
       {showSendReview ? (
