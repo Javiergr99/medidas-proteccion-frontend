@@ -362,17 +362,105 @@ export const INITIAL_PLAN_RESTITUCION_FORM = {
   derechos_vulnerados: [],
 };
 
+export const EMPTY_MEDIDA_URGENTE_ITEM = {
+  numero_medida: "",
+  autoridad_emitio: "",
+  fecha_medida: "",
+  descripcion: "",
+};
+
+export const EMPTY_MEDIDA_ESPECIAL_ITEM = {
+  numero_medida: "",
+  autoridad_emitio: "",
+  fecha_medida: "",
+  descripcion: "",
+  medida_alojamiento_cas: "",
+  tipo_centro: "",
+  nombre_razon_social: "",
+  determinacion_familiar: "",
+  determinacion_fecha: "",
+  determinacion_descripcion: "",
+  pronfac: "",
+  pronfac_fecha: "",
+  pronfac_descripcion: "",
+};
+
 export const INITIAL_MEDIDAS_PROTECCION_FORM = {
-  medidas_urgentes: [],
-  medidas_especiales: [],
-  observaciones: "",
+  medida_emitida_procuraduria: "",
+  medidas_especiales_list: [],
+  existen_medidas_urgentes: "",
+  medidas_urgentes_list: [],
 };
 
 export const INITIAL_CIERRE_CASO_FORM = {
-  fecha_cierre: "",
-  motivo_cierre: "",
-  observaciones_cierre: "",
+  tipo_egreso: "",
+  egreso_planificado: "",
+  egreso_no_planificado: "",
+  fecha_egreso: "",
+  descripcion_egreso: "",
+  determinacion_interes_superior: "",
+  existe_cierre_caso: "",
+  razon_cierre_caso: "",
+  descripcion_cierre_imposibilidad: "",
 };
+
+export const TIPO_EGRESO_OPTIONS = [
+  { value: "Ninguno", label: "Ninguno" },
+  { value: "Planificado", label: "Planificado" },
+  { value: "No planificado", label: "No planificado" },
+];
+
+export const EGRESO_PLANIFICADO_OPTIONS = [
+  { value: "Reintegración familiar", label: "Reintegración familiar" },
+  { value: "Canalización institucional", label: "Canalización institucional" },
+  { value: "Traslado a centro de asistencia social", label: "Traslado a centro de asistencia social" },
+  { value: "Conclusión del seguimiento", label: "Conclusión del seguimiento" },
+  { value: "Otro", label: "Otro" },
+];
+
+export const EGRESO_NO_PLANIFICADO_OPTIONS = [
+  { value: "Abandono voluntario", label: "Abandono voluntario" },
+  { value: "Continuó ruta migratoria", label: "Continuó ruta migratoria" },
+  { value: "No localización", label: "No localización" },
+  { value: "Retiro por familiar o tercero", label: "Retiro por familiar o tercero" },
+  { value: "Otro", label: "Otro" },
+];
+
+export const RAZON_CIERRE_CASO_OPTIONS = [
+  { value: "Cumplimiento del plan de restitución", label: "Cumplimiento del plan de restitución" },
+  { value: "Reintegración familiar", label: "Reintegración familiar" },
+  { value: "Canalización a autoridad competente", label: "Canalización a autoridad competente" },
+  { value: "Imposibilidad material de cumplir la medida", label: "Imposibilidad material de cumplir la medida" },
+  { value: "Otro", label: "Otro" },
+];
+
+export const MEDIDA_ALOJAMIENTO_CAS_OPTIONS = [
+  { value: "si", label: "Sí" },
+  { value: "no", label: "No" },
+  { value: "no_aplica", label: "No aplica" },
+];
+
+export const TIPO_CENTRO_OPTIONS = [
+  { value: "centro_asistencial_publico", label: "Centro asistencial público" },
+  { value: "centro_asistencial_privado", label: "Centro asistencial privado" },
+  { value: "albergue_temporal", label: "Albergue temporal" },
+  { value: "otro", label: "Otro" },
+];
+
+export const DETERMINACION_FAMILIAR_OPTIONS = [
+  { value: "familia_origen", label: "Familia de origen" },
+  { value: "familia_extensa", label: "Familia extensa" },
+  { value: "familia_acogida", label: "Familia de acogida" },
+  { value: "no_viable", label: "No viable" },
+  { value: "pendiente", label: "Pendiente" },
+];
+
+export const PRONFAC_OPTIONS = [
+  { value: "si", label: "Sí" },
+  { value: "no", label: "No" },
+  { value: "pendiente", label: "Pendiente" },
+  { value: "no_aplica", label: "No aplica" },
+];
 
 export const INITIAL_MEDIDAS_CREATE_FORMS = {
   datos_generales: INITIAL_DATOS_GENERALES_FORM,

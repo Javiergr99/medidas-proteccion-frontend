@@ -71,3 +71,12 @@ export async function saveMedidasProteccionRequest({ registroId, payload }) {
 
   return response.data;
 }
+
+export async function saveCierreCasoRequest({ registroId, payload }) {
+  const response = await api.put(
+    `/registros/${registroId}/cierre-caso`,
+    payload
+  );
+
+  return response.data;
+}

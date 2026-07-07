@@ -2,6 +2,8 @@ import dayjs from "dayjs";
 
 import {
   DISCAPACIDAD_EMPTY_ITEM,
+  EMPTY_MEDIDA_ESPECIAL_ITEM,
+  EMPTY_MEDIDA_URGENTE_ITEM,
   INITIAL_MEDIDAS_CREATE_FORMS,
   MEDIDAS_CREATE_SECTIONS,
 } from "../constants/medidasCreate.constants";
@@ -25,9 +27,8 @@ export function getInitialMedidasCreateForms() {
     },
     medidas_proteccion: {
       ...(INITIAL_MEDIDAS_CREATE_FORMS.medidas_proteccion || {}),
-      medidas_urgentes: [],
-      medidas_especiales: [],
-      observaciones: "",
+      medidas_especiales_list: [],
+      medidas_urgentes_list: [],
     },
     cierre_caso: {
       ...(INITIAL_MEDIDAS_CREATE_FORMS.cierre_caso || {}),
@@ -171,18 +172,40 @@ export function normalizePlanRestitucionFieldValue(name, value) {
 }
 
 export function normalizeMedidasProteccionFieldValue(name, value) {
-  if (["medidas_urgentes", "medidas_especiales"].includes(name)) {
-    return Array.isArray(value)
-      ? value.map((item) => String(item || "").trim()).filter(Boolean)
-      : [];
+  if (name === "medidas_urgentes_list" || name === "medidas_especiales_list") {
+    return Array.isArray(value) ? value : [];
   }
 
-  if (name === "observaciones") {
-    return String(value || "").slice(0, 1200);
+  if (
+    name === "medida_emitida_procuraduria" ||
+    name === "existen_medidas_urgentes"
+  ) {
+    return value;
   }
 
-  return String(value || "");
+  return value;
 }
+
+export function normalizeCierreCasoFieldValue(name, value) {
+  /*
+   * Importante:
+   * Los campos select deben conservar exactamente el value de las opciones.
+   * Si se convierten a MAYÚSCULAS, el select no encuentra coincidencia
+   * y visualmente queda en blanco.
+   */
+  if (
+    [
+      "descripcion_egreso",
+      "determinacion_interes_superior",
+      "descripcion_cierre_imposibilidad",
+    ].includes(name)
+  ) {
+    return normalizeUppercaseText(value);
+  }
+
+  return value;
+}
+
 
 export function buildNextDatosGeneralesForm({ previousForm, name, value }) {
   const nextForm = {
@@ -327,31 +350,82 @@ export function buildNextMedidasProteccionForm({
   value,
 }) {
   const nextForm = {
-    medidas_urgentes: [],
-    medidas_especiales: [],
-    observaciones: "",
+    ...(INITIAL_MEDIDAS_CREATE_FORMS.medidas_proteccion || {}),
     ...previousForm,
     [name]: value,
   };
 
-  if (name === "medidas_urgentes") {
-    nextForm.medidas_urgentes = Array.from(
-      new Set(
-        (Array.isArray(value) ? value : [])
-          .map((item) => String(item || "").trim())
-          .filter(Boolean)
-      )
-    );
+  if (name === "medida_emitida_procuraduria") {
+    if (value === "si") {
+      nextForm.medidas_especiales_list =
+        Array.isArray(previousForm.medidas_especiales_list) &&
+        previousForm.medidas_especiales_list.length
+          ? previousForm.medidas_especiales_list
+          : [{ ...EMPTY_MEDIDA_ESPECIAL_ITEM }];
+    } else {
+      nextForm.medidas_especiales_list = [];
+    }
   }
 
-  if (name === "medidas_especiales") {
-    nextForm.medidas_especiales = Array.from(
-      new Set(
-        (Array.isArray(value) ? value : [])
-          .map((item) => String(item || "").trim())
-          .filter(Boolean)
-      )
-    );
+  if (name === "existen_medidas_urgentes") {
+    if (value === "si") {
+      nextForm.medidas_urgentes_list =
+        Array.isArray(previousForm.medidas_urgentes_list) &&
+        previousForm.medidas_urgentes_list.length
+          ? previousForm.medidas_urgentes_list
+          : [{ ...EMPTY_MEDIDA_URGENTE_ITEM }];
+    } else {
+      nextForm.medidas_urgentes_list = [];
+    }
+  }
+
+  if (name === "medidas_urgentes_list") {
+    nextForm.medidas_urgentes_list = Array.isArray(value) ? value : [];
+  }
+
+  if (name === "medidas_especiales_list") {
+    nextForm.medidas_especiales_list = Array.isArray(value) ? value : [];
+  }
+
+  return nextForm;
+}
+
+
+export function buildNextCierreCasoForm({ previousForm = {}, name, value }) {
+  const nextForm = {
+    ...(INITIAL_MEDIDAS_CREATE_FORMS.cierre_caso || {}),
+    ...previousForm,
+    [name]: value,
+  };
+
+  if (name === "tipo_egreso") {
+    if (value === "Planificado") {
+      nextForm.egreso_no_planificado = "";
+    }
+
+    if (value === "No planificado") {
+      nextForm.egreso_planificado = "";
+    }
+
+    if (!value || value === "Ninguno") {
+      nextForm.egreso_planificado = "";
+      nextForm.egreso_no_planificado = "";
+      nextForm.fecha_egreso = "";
+      nextForm.descripcion_egreso = "";
+      nextForm.determinacion_interes_superior = "";
+    }
+  }
+
+  if (name === "existe_cierre_caso" && value !== "si") {
+    nextForm.razon_cierre_caso = "";
+    nextForm.descripcion_cierre_imposibilidad = "";
+  }
+
+  if (
+    name === "razon_cierre_caso" &&
+    value !== "Imposibilidad material de cumplir la medida"
+  ) {
+    nextForm.descripcion_cierre_imposibilidad = "";
   }
 
   return nextForm;
@@ -620,90 +694,95 @@ export function validatePlanRestitucion(form) {
 export function validateMedidasProteccion(form = {}) {
   const errors = {};
 
-  const medidasUrgentes = Array.isArray(form.medidas_urgentes)
-    ? form.medidas_urgentes
+  const medidasEspeciales = Array.isArray(form.medidas_especiales_list)
+    ? form.medidas_especiales_list
     : [];
 
-  const medidasEspeciales = Array.isArray(form.medidas_especiales)
-    ? form.medidas_especiales
+  const medidasUrgentes = Array.isArray(form.medidas_urgentes_list)
+    ? form.medidas_urgentes_list
     : [];
 
-  if (medidasUrgentes.length === 0 && medidasEspeciales.length === 0) {
-    errors.medidas_urgentes =
-      "Agrega al menos una medida urgente o una medida especial.";
-    errors.medidas_especiales =
-      "Agrega al menos una medida urgente o una medida especial.";
+  if (form.medida_emitida_procuraduria === "si") {
+    if (!medidasEspeciales.length) {
+      errors.medidas_especiales_list =
+        "Agrega al menos una medida especial emitida por la Procuraduría.";
+    } else {
+      const rowErrors = medidasEspeciales.map((item) => {
+        const itemErrors = {};
+
+        if (!String(item.numero_medida || "").trim()) {
+          itemErrors.numero_medida = "Captura el número de medida.";
+        }
+
+        if (!String(item.autoridad_emitio || "").trim()) {
+          itemErrors.autoridad_emitio = "Captura la autoridad que emitió.";
+        }
+
+        if (!item.fecha_medida) {
+          itemErrors.fecha_medida = "Captura la fecha de la medida.";
+        } else {
+          const fecha = dayjs(item.fecha_medida);
+
+          if (!fecha.isValid()) {
+            itemErrors.fecha_medida = "La fecha no es válida.";
+          }
+
+          if (fecha.isAfter(dayjs(), "day")) {
+            itemErrors.fecha_medida = "No se permiten fechas futuras.";
+          }
+        }
+
+        return itemErrors;
+      });
+
+      if (rowErrors.some((itemErrors) => Object.keys(itemErrors).length > 0)) {
+        errors.medidas_especiales_list = rowErrors;
+      }
+    }
   }
 
-  if (String(form.observaciones || "").length > 1200) {
-    errors.observaciones =
-      "Las observaciones no pueden exceder 1200 caracteres.";
+  if (form.existen_medidas_urgentes === "si") {
+    if (!medidasUrgentes.length) {
+      errors.medidas_urgentes_list =
+        "Agrega al menos una medida urgente.";
+    } else {
+      const rowErrors = medidasUrgentes.map((item) => {
+        const itemErrors = {};
+
+        if (!String(item.numero_medida || "").trim()) {
+          itemErrors.numero_medida = "Captura el número de medida.";
+        }
+
+        if (!String(item.autoridad_emitio || "").trim()) {
+          itemErrors.autoridad_emitio = "Captura la autoridad que emitió.";
+        }
+
+        if (!item.fecha_medida) {
+          itemErrors.fecha_medida = "Captura la fecha de la medida.";
+        } else {
+          const fecha = dayjs(item.fecha_medida);
+
+          if (!fecha.isValid()) {
+            itemErrors.fecha_medida = "La fecha no es válida.";
+          }
+
+          if (fecha.isAfter(dayjs(), "day")) {
+            itemErrors.fecha_medida = "No se permiten fechas futuras.";
+          }
+        }
+
+        return itemErrors;
+      });
+
+      if (rowErrors.some((itemErrors) => Object.keys(itemErrors).length > 0)) {
+        errors.medidas_urgentes_list = rowErrors;
+      }
+    }
   }
 
   return errors;
 }
 
-function toNumberOrNull(value) {
-  if (value === "" || value === null || value === undefined) {
-    return null;
-  }
-
-  const numberValue = Number(value);
-
-  return Number.isNaN(numberValue) ? null : numberValue;
-}
-
-function toStringOrNull(value) {
-  const cleanValue = String(value || "").trim();
-  return cleanValue || null;
-}
-
-function toBooleanFromSiNo(value) {
-  return value === "si" || value === true || value === "true";
-}
-
-function toNullableBooleanFromSiNo(value) {
-  if (value === "" || value === null || value === undefined) {
-    return null;
-  }
-
-  return toBooleanFromSiNo(value);
-}
-
-function buildDiscapacidadesPayload(form) {
-  if (form.tiene_discapacidad !== "si") {
-    return [];
-  }
-
-  const discapacidades = Array.isArray(form.discapacidades)
-    ? form.discapacidades
-    : [];
-
-  return discapacidades.map((item) => ({
-    subtipo_discapacidad_id: toNumberOrNull(item.subtipo_discapacidad_id),
-    severidad_discapacidad_id: toNumberOrNull(item.severidad_discapacidad_id),
-    especifique_otros: toStringOrNull(item.especifique_otros),
-  }));
-}
-
-function buildDetallesDiagnosticosPayload(form) {
-  const diagnosticoElaborado = toNullableBooleanFromSiNo(
-    form.diagnostico_elaborado
-  );
-
-  if (diagnosticoElaborado !== true) {
-    return [];
-  }
-
-  const detallesDiagnosticos = Array.isArray(form.detalles_diagnosticos)
-    ? form.detalles_diagnosticos
-    : [];
-
-  return detallesDiagnosticos.map((item) => ({
-    tipo_diagnostico: toStringOrNull(item.tipo_diagnostico),
-    fecha_diagnostico: toStringOrNull(item.fecha_diagnostico),
-  }));
-}
 
 export function buildDatosGeneralesPayload(form) {
   const cuentaConCurp = hasCuentaConCurp(form.cuenta_con_curp);
@@ -876,18 +955,93 @@ export function buildPlanRestitucionPayload(form) {
 }
 
 export function buildMedidasProteccionPayload(form = {}) {
+  const medidaEmitidaProcuraduria = toNullableBooleanFromSiNo(
+    form.medida_emitida_procuraduria
+  );
+
+  const existenMedidasUrgentes = toNullableBooleanFromSiNo(
+    form.existen_medidas_urgentes
+  );
+
+  const medidasEspeciales = Array.isArray(form.medidas_especiales_list)
+    ? form.medidas_especiales_list
+    : [];
+
+  const medidasUrgentes = Array.isArray(form.medidas_urgentes_list)
+    ? form.medidas_urgentes_list
+    : [];
+
   return {
-    medidas_urgentes: Array.isArray(form.medidas_urgentes)
-      ? form.medidas_urgentes
-          .map((item) => String(item || "").trim())
-          .filter(Boolean)
-      : [],
-    medidas_especiales: Array.isArray(form.medidas_especiales)
-      ? form.medidas_especiales
-          .map((item) => String(item || "").trim())
-          .filter(Boolean)
-      : [],
-    observaciones: String(form.observaciones || "").trim() || null,
+    medida_emitida_procuraduria: medidaEmitidaProcuraduria,
+    medidas_especiales_list:
+      medidaEmitidaProcuraduria === true
+        ? medidasEspeciales.map((item) => ({
+            numero_medida: toStringOrNull(item.numero_medida),
+            autoridad_emitio: toStringOrNull(item.autoridad_emitio),
+            fecha_medida: toStringOrNull(item.fecha_medida),
+            descripcion: toStringOrNull(item.descripcion),
+
+            medida_alojamiento_cas: toStringOrNull(item.medida_alojamiento_cas),
+            tipo_centro: toStringOrNull(item.tipo_centro),
+            nombre_razon_social: toStringOrNull(item.nombre_razon_social),
+
+            determinacion_familiar: toStringOrNull(item.determinacion_familiar),
+            determinacion_fecha: toStringOrNull(item.determinacion_fecha),
+            determinacion_descripcion: toStringOrNull(
+              item.determinacion_descripcion
+            ),
+
+            pronfac: toStringOrNull(item.pronfac),
+            pronfac_fecha: toStringOrNull(item.pronfac_fecha),
+            pronfac_descripcion: toStringOrNull(item.pronfac_descripcion),
+          }))
+        : [],
+
+    existen_medidas_urgentes: existenMedidasUrgentes,
+    medidas_urgentes_list:
+      existenMedidasUrgentes === true
+        ? medidasUrgentes.map((item) => ({
+            numero_medida: toStringOrNull(item.numero_medida),
+            autoridad_emitio: toStringOrNull(item.autoridad_emitio),
+            fecha_medida: toStringOrNull(item.fecha_medida),
+            descripcion: toStringOrNull(item.descripcion),
+          }))
+        : [],
+  };
+}
+
+
+export function buildCierreCasoPayload(form = {}) {
+  const existeCierreCaso = toNullableBooleanFromSiNo(form.existe_cierre_caso);
+
+  const tipoEgreso = toStringOrNull(form.tipo_egreso);
+
+  const hasEgreso = tipoEgreso && tipoEgreso !== "Ninguno";
+
+  return {
+    tipo_egreso: tipoEgreso,
+    egreso_planificado:
+      tipoEgreso === "Planificado" ? toStringOrNull(form.egreso_planificado) : null,
+    egreso_no_planificado:
+      tipoEgreso === "No planificado"
+        ? toStringOrNull(form.egreso_no_planificado)
+        : null,
+    fecha_egreso: hasEgreso ? toStringOrNull(form.fecha_egreso) : null,
+    descripcion_egreso: hasEgreso
+      ? toStringOrNull(form.descripcion_egreso)
+      : null,
+    determinacion_interes_superior: hasEgreso
+      ? toStringOrNull(form.determinacion_interes_superior)
+      : null,
+
+    existe_cierre_caso: existeCierreCaso,
+    razon_cierre_caso:
+      existeCierreCaso === true ? toStringOrNull(form.razon_cierre_caso) : null,
+    descripcion_cierre_imposibilidad:
+      existeCierreCaso === true &&
+      form.razon_cierre_caso === "Imposibilidad material de cumplir la medida"
+        ? toStringOrNull(form.descripcion_cierre_imposibilidad)
+        : null,
   };
 }
 
@@ -924,4 +1078,44 @@ export function hasPreviousSection(activeSection) {
   );
 
   return currentIndex > 0;
+}
+
+export function validateCierreCaso(form = {}) {
+  const errors = {};
+
+  if (form.fecha_egreso) {
+    const fechaEgreso = dayjs(form.fecha_egreso);
+
+    if (!fechaEgreso.isValid()) {
+      errors.fecha_egreso = "La fecha no es válida.";
+    }
+
+    if (fechaEgreso.isAfter(dayjs(), "day")) {
+      errors.fecha_egreso = "No se permiten fechas futuras.";
+    }
+  }
+
+  if (form.tipo_egreso === "Planificado" && !form.egreso_planificado) {
+    errors.egreso_planificado = "Selecciona el egreso planificado.";
+  }
+
+  if (form.tipo_egreso === "No planificado" && !form.egreso_no_planificado) {
+    errors.egreso_no_planificado = "Selecciona el egreso no planificado.";
+  }
+
+  if (form.existe_cierre_caso === "si") {
+    if (!form.razon_cierre_caso) {
+      errors.razon_cierre_caso = "Selecciona la razón de cierre del caso.";
+    }
+
+    if (
+      form.razon_cierre_caso === "Imposibilidad material de cumplir la medida" &&
+      !String(form.descripcion_cierre_imposibilidad || "").trim()
+    ) {
+      errors.descripcion_cierre_imposibilidad =
+        "Describe la imposibilidad material de cumplir la medida.";
+    }
+  }
+
+  return errors;
 }

@@ -18,6 +18,7 @@ import MedidasModuleHeader from "../components/navigation/MedidasModuleHeader";
 import NnaVerificationPanel from "../components/create/NnaVerificationPanel";
 import PlanRestitucionForm from "../components/create/PlanRestitucionForm";
 import MedidasProteccionForm from "../components/create/MedidasProteccionForm";
+import CierreCasoForm from "../components/create/CierreCasoForm";
 
 import { useMedidasCatalogos } from "../hooks/useMedidasCatalogos";
 import { useNnaVerification } from "../hooks/useNnaVerification";
@@ -34,6 +35,7 @@ import {
   normalizeRegistroSession,
   saveImpresionDiagnosticaRequest,
   saveIntervencionMultidisciplinariaRequest,
+  saveCierreCasoRequest,
   saveMedidasProteccionRequest,
   savePlanRestitucionRequest,
   sendRegistroRevisionRequest,
@@ -44,7 +46,9 @@ import {
   buildDatosGeneralesPayload,
   buildImpresionDiagnosticaPayload,
   buildIntervencionMultidisciplinariaPayload,
+  buildCierreCasoPayload,
   buildMedidasProteccionPayload,
+  buildNextCierreCasoForm,
   buildNextDatosGeneralesForm,
   buildNextImpresionDiagnosticaForm,
   buildNextIntervencionMultidisciplinariaForm,
@@ -60,11 +64,13 @@ import {
   normalizeDatosGeneralesFieldValue,
   normalizeImpresionDiagnosticaFieldValue,
   normalizeIntervencionMultidisciplinariaFieldValue,
+  normalizeCierreCasoFieldValue,
   normalizeMedidasProteccionFieldValue,
   normalizePlanRestitucionFieldValue,
   validateDatosGenerales,
   validateImpresionDiagnostica,
   validateIntervencionMultidisciplinaria,
+  validateCierreCaso,
   validateMedidasProteccion,
   validatePlanRestitucion,
 } from "../utils/medidasCreate.utils";
@@ -73,14 +79,6 @@ import {
   buildDatosGeneralesFromVerificationPayload,
   buildDatosGeneralesFromVerifiedNna,
 } from "../utils/nnaVerification.utils";
-
-function getEmptyMedidasProteccionForm() {
-  return {
-    medidas_urgentes: [],
-    medidas_especiales: [],
-    observaciones: "",
-  };
-}
 
 export default function MedidasCreatePage() {
   const navigate = useNavigate();
@@ -267,9 +265,20 @@ export default function MedidasCreatePage() {
         return {
           ...previousForms,
           medidas_proteccion: buildNextMedidasProteccionForm({
-            previousForm:
-              previousForms.medidas_proteccion ||
-              getEmptyMedidasProteccionForm(),
+            previousForm: previousForms.medidas_proteccion,
+            name,
+            value,
+          }),
+        };
+      }
+
+      if (activeSection === "cierre_caso") {
+        const value = normalizeCierreCasoFieldValue(name, rawValue);
+
+        return {
+          ...previousForms,
+          cierre_caso: buildNextCierreCasoForm({
+            previousForm: previousForms.cierre_caso,
             name,
             value,
           }),
@@ -308,9 +317,11 @@ export default function MedidasCreatePage() {
     }
 
     if (activeSection === "medidas_proteccion") {
-      return validateMedidasProteccion(
-        forms.medidas_proteccion || getEmptyMedidasProteccionForm()
-      );
+      return validateMedidasProteccion(forms.medidas_proteccion);
+    }
+
+    if (activeSection === "cierre_caso") {
+      return validateCierreCaso(forms.cierre_caso);
     }
 
     return {};
@@ -464,6 +475,34 @@ export default function MedidasCreatePage() {
     return response;
   }
 
+
+  async function saveCierreCasoSection() {
+    if (!registroSession?.registroId) {
+      enqueueSnackbar(
+        "Primero debes guardar Datos Generales para obtener el UUID del expediente.",
+        {
+          variant: "warning",
+        }
+      );
+      return null;
+    }
+
+    const payload = buildCierreCasoPayload(forms.cierre_caso);
+
+    const response = await saveCierreCasoRequest({
+      registroId: registroSession.registroId,
+      payload,
+    });
+
+    const nextSession = normalizeRegistroSession(response);
+
+    if (nextSession) {
+      setRegistroSession(nextSession);
+    }
+
+    return response;
+  }
+
   async function saveCurrentSection() {
     if (saving) return false;
 
@@ -489,7 +528,8 @@ export default function MedidasCreatePage() {
       activeSection !== "impresion_diagnostica" &&
       activeSection !== "intervencion_multidisciplinaria" &&
       activeSection !== "plan_restitucion" &&
-      activeSection !== "medidas_proteccion"
+      activeSection !== "medidas_proteccion" &&
+      activeSection !== "cierre_caso"
     ) {
       enqueueSnackbar("Esta sección se integrará en una fase posterior.", {
         variant: "info",
@@ -534,6 +574,10 @@ export default function MedidasCreatePage() {
 
       if (activeSection === "medidas_proteccion") {
         response = await saveMedidasProteccionSection();
+      }
+
+      if (activeSection === "cierre_caso") {
+        response = await saveCierreCasoSection();
       }
 
       if (!response) {
@@ -697,7 +741,17 @@ export default function MedidasCreatePage() {
     if (activeSection === "medidas_proteccion") {
       return (
         <MedidasProteccionForm
-          form={forms.medidas_proteccion || getEmptyMedidasProteccionForm()}
+          form={forms.medidas_proteccion}
+          errors={activeErrors}
+          onFieldChange={updateField}
+        />
+      );
+    }
+
+    if (activeSection === "cierre_caso") {
+      return (
+        <CierreCasoForm
+          form={forms.cierre_caso}
           errors={activeErrors}
           onFieldChange={updateField}
         />
