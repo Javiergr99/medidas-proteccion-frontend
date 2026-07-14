@@ -82,6 +82,105 @@ import {
   buildDatosGeneralesFromVerifiedNna,
 } from "../utils/nnaVerification.utils";
 
+
+const EXISTING_NNA_MP_REDIRECT_MESSAGE_KEY =
+  "mp_existing_nna_redirect_message";
+
+const EXISTING_NNA_MP_MESSAGE =
+  "El NNA ya se encuentra en el registro de Medidas de Protección (MP).";
+
+function getObjectValue(source, keys = []) {
+  if (!source || typeof source !== "object") {
+    return "";
+  }
+
+  for (const key of keys) {
+    if (source[key] !== null && source[key] !== undefined && source[key] !== "") {
+      return source[key];
+    }
+  }
+
+  return "";
+}
+
+function getRegistroIdFromVerificationPayload(payload) {
+  const data = payload && typeof payload === "object" ? payload : {};
+  const detail = data.detail && typeof data.detail === "object" ? data.detail : {};
+  const registro = data.registro && typeof data.registro === "object" ? data.registro : {};
+  const registroMp =
+    data.registro_mp && typeof data.registro_mp === "object"
+      ? data.registro_mp
+      : {};
+  const registroMedidas =
+    data.registro_medidas &&
+    typeof data.registro_medidas === "object"
+      ? data.registro_medidas
+      : {};
+
+  return String(
+    getObjectValue(data, [
+      "registro_id",
+      "id_registro",
+      "id",
+      "registroId",
+      "idRegistro",
+    ]) ||
+      getObjectValue(detail, [
+        "registro_id",
+        "id_registro",
+        "id",
+        "registroId",
+        "idRegistro",
+      ]) ||
+      getObjectValue(registro, [
+        "registro_id",
+        "id_registro",
+        "id",
+        "registroId",
+        "idRegistro",
+      ]) ||
+      getObjectValue(registroMp, [
+        "registro_id",
+        "id_registro",
+        "id",
+        "registroId",
+        "idRegistro",
+      ]) ||
+      getObjectValue(registroMedidas, [
+        "registro_id",
+        "id_registro",
+        "id",
+        "registroId",
+        "idRegistro",
+      ]) ||
+      ""
+  ).trim();
+}
+
+function isExistingMpVerificationResult(result) {
+  const response = result?.response || {};
+  const detail = response?.detail;
+
+  const text = String(
+    response?.message ||
+      response?.mensaje ||
+      response?.code ||
+      response?.codigo ||
+      (typeof detail === "string" ? detail : detail?.message || detail?.mensaje) ||
+      result?.message ||
+      ""
+  ).toLowerCase();
+
+  return (
+    result?.status === 409 ||
+    response?.status === 409 ||
+    text.includes("medidas de protección") ||
+    text.includes("medidas de proteccion") ||
+    text.includes("ya se encuentra en el registro")
+  );
+}
+
+
 export default function MedidasCreatePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -117,8 +216,29 @@ export default function MedidasCreatePage() {
   const canGoBack = hasPreviousSection(activeSection);
   const activeErrors = errorsBySection[activeSection] || {};
 
+  const registrosOrigenInteroperabilidad = Array.from(
+    new Set(
+      (
+        Array.isArray(verification.registrosPrevios)
+          ? verification.registrosPrevios
+          : []
+      )
+        .map((registro) => String(registro || "").trim())
+        .filter(Boolean)
+    )
+  );
+
   const canShowCaptureFlow =
     isExistingRecordMode || (verification.isVerified && !verification.isBlocked);
+
+  const shouldWaitForCatalogos = isExistingRecordMode && catalogosLoading;
+  const catalogosLoadError =
+    isExistingRecordMode && catalogosError
+      ? "No fue posible cargar los catálogos necesarios para mostrar el expediente."
+      : "";
+
+  const loadingExistingRecordFlow = loadingRecord || shouldWaitForCatalogos;
+  const existingRecordLoadError = recordLoadError || catalogosLoadError;
 
   const estadoActual = registroSession?.estadoActual || "En captura";
   const isEditable = estadoActual === "En captura";
@@ -146,15 +266,28 @@ export default function MedidasCreatePage() {
         setErrorsBySection({});
         setActiveSection("datos_generales");
 
-        enqueueSnackbar(
-          nextSession?.estadoActual === "En captura"
-            ? "Expediente cargado en modo edición."
-            : "Expediente cargado en modo solo lectura.",
-          {
-            variant: "success",
-            autoHideDuration: 3200,
-          }
+        const redirectedMessage = sessionStorage.getItem(
+          EXISTING_NNA_MP_REDIRECT_MESSAGE_KEY
         );
+
+        if (redirectedMessage) {
+          sessionStorage.removeItem(EXISTING_NNA_MP_REDIRECT_MESSAGE_KEY);
+
+          enqueueSnackbar(redirectedMessage, {
+            variant: "success",
+            autoHideDuration: 4200,
+          });
+        } else {
+          enqueueSnackbar(
+            nextSession?.estadoActual === "En captura"
+              ? "Expediente cargado en modo edición."
+              : "Expediente cargado en modo solo lectura.",
+            {
+              variant: "success",
+              autoHideDuration: 3200,
+            }
+          );
+        }
       } catch (error) {
         if (!isMounted) return;
 
@@ -225,7 +358,36 @@ export default function MedidasCreatePage() {
   async function handleVerifyNna(payload) {
     const result = await verification.verifyNna(payload);
 
-    if (!result.ok) return;
+    if (!result.ok) {
+      if (isExistingMpVerificationResult(result)) {
+        const registroId = getRegistroIdFromVerificationPayload(
+          result.response || result
+        );
+
+        if (registroId) {
+          sessionStorage.setItem(
+            EXISTING_NNA_MP_REDIRECT_MESSAGE_KEY,
+            EXISTING_NNA_MP_MESSAGE
+          );
+
+          navigate(`${MEDIDAS_CREATE_ROUTE}?registroId=${registroId}`, {
+            replace: true,
+          });
+
+          return;
+        }
+
+        enqueueSnackbar(
+          "Backend confirmó que el NNA ya existe en MP, pero no envió el UUID del registro para abrirlo.",
+          {
+            variant: "warning",
+            autoHideDuration: 5200,
+          }
+        );
+      }
+
+      return;
+    }
 
     const verifiedNna = result.response?.nna || null;
 
@@ -850,7 +1012,7 @@ export default function MedidasCreatePage() {
 
       <main className="mp-create-shell">
         <div className="mp-create-stack">
-          {loadingRecord ? (
+          {loadingExistingRecordFlow ? (
             <Alert
               severity="info"
               sx={{
@@ -862,9 +1024,11 @@ export default function MedidasCreatePage() {
                 fontWeight: 750,
               }}
             >
-              Cargando expediente...
+              {loadingRecord
+                ? "Cargando expediente..."
+                : "Cargando catálogos del expediente..."}
             </Alert>
-          ) : recordLoadError ? (
+          ) : existingRecordLoadError ? (
             <Alert
               severity="error"
               sx={{
@@ -875,7 +1039,7 @@ export default function MedidasCreatePage() {
                 fontWeight: 750,
               }}
             >
-              {recordLoadError}
+              {existingRecordLoadError}
             </Alert>
           ) : !canShowCaptureFlow ? (
             <NnaVerificationPanel
@@ -903,6 +1067,41 @@ export default function MedidasCreatePage() {
               />
 
               <section className="mp-create-form-shell">
+                {activeSection === "datos_generales" &&
+                registrosOrigenInteroperabilidad.length > 0 ? (
+                  <Alert
+                    severity="success"
+                    sx={{
+                      mb: 2.2,
+                      borderRadius: "14px",
+                      border: "1px solid rgba(19,50,46,0.18)",
+                      backgroundColor: "rgba(19,50,46,0.055)",
+                      color: "#13322e",
+                      fontFamily: "Noto Sans, sans-serif",
+                      fontWeight: 750,
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <Box
+                      component="span"
+                      sx={{
+                        display: "block",
+                        mb: 0.35,
+                        fontWeight: 950,
+                      }}
+                    >
+                      Información recuperada mediante interoperabilidad
+                    </Box>
+
+                    El NNA fue localizado previamente en:{" "}
+                    <Box component="span" sx={{ fontWeight: 950 }}>
+                      {registrosOrigenInteroperabilidad.join(", ")}
+                    </Box>
+                    . Los datos disponibles fueron precargados en este
+                    formulario.
+                  </Alert>
+                ) : null}
+
                 {!isEditable ? (
                   <Alert
                     severity="warning"

@@ -1242,6 +1242,357 @@ function normalizeRegistroList(value) {
   return Array.isArray(value) ? value : [];
 }
 
+
+const DOCUMENTO_IDENTIFICACION_VALUES = [
+  "",
+  "sin_documento",
+  "con_documento",
+];
+
+const TIPO_IDENTIFICACION_VALUES = [
+  "",
+  "acta_nacimiento",
+  "curp",
+  "pasaporte",
+  "documento_migratorio",
+  "credencial_escolar",
+  "constancia_identidad",
+  "otro",
+];
+
+const CALIDAD_MIGRATORIA_VALUES = [
+  "",
+  "no_aplica",
+  "mexicana",
+  "residente_temporal",
+  "residente_permanente",
+  "visitante",
+  "solicitante_refugio",
+  "refugiada",
+  "retornada",
+  "situacion_irregular",
+  "se_desconoce",
+];
+
+function normalizeDocumentoIdentificacionFromRegistro(value) {
+  const cleanValue = toFormString(value);
+
+  if (DOCUMENTO_IDENTIFICACION_VALUES.includes(cleanValue)) {
+    return cleanValue;
+  }
+
+  if (TIPO_IDENTIFICACION_VALUES.includes(cleanValue)) {
+    return "con_documento";
+  }
+
+  if (cleanValue === "true" || value === true) {
+    return "con_documento";
+  }
+
+  if (cleanValue === "false" || value === false) {
+    return "sin_documento";
+  }
+
+  return cleanValue ? "con_documento" : "";
+}
+
+function normalizeTipoIdentificacionFromRegistro({
+  documentoIdentificacion,
+  tipoIdentificacion,
+}) {
+  const cleanTipo = toFormString(tipoIdentificacion);
+  const cleanDocumento = toFormString(documentoIdentificacion);
+
+  if (TIPO_IDENTIFICACION_VALUES.includes(cleanTipo)) {
+    return cleanTipo;
+  }
+
+  if (TIPO_IDENTIFICACION_VALUES.includes(cleanDocumento)) {
+    return cleanDocumento;
+  }
+
+  if (cleanTipo === "oficial" || cleanTipo === "documento_oficial") {
+    return "otro";
+  }
+
+  return "";
+}
+
+function normalizeCalidadMigratoriaFromRegistro(value) {
+  const cleanValue = toFormString(value);
+
+  if (CALIDAD_MIGRATORIA_VALUES.includes(cleanValue)) {
+    return cleanValue;
+  }
+
+  const aliases = {
+    irregular: "situacion_irregular",
+    situacion_migratoria_irregular: "situacion_irregular",
+    desconocida: "se_desconoce",
+    desconocido: "se_desconoce",
+    se_desconoce: "se_desconoce",
+  };
+
+  return aliases[cleanValue] || "";
+}
+
+
+
+function normalizeTipoEgresoFromRegistro(value) {
+  const cleanValue = toFormString(value);
+
+  const validValues = ["", "Ninguno", "Planificado", "No planificado"];
+
+  if (validValues.includes(cleanValue)) {
+    return cleanValue;
+  }
+
+  const aliases = {
+    ninguno: "Ninguno",
+    sin_egreso: "Ninguno",
+    planificado: "Planificado",
+    no_planificado: "No planificado",
+    noPlanificado: "No planificado",
+    "No_planificado": "No planificado",
+  };
+
+  return aliases[cleanValue] || "";
+}
+
+function normalizeRazonCierreCasoFromRegistro(value) {
+  const cleanValue = toFormString(value);
+
+  const validValues = [
+    "",
+    "Cumplimiento del plan de restitución",
+    "Reintegración familiar",
+    "Canalización a autoridad competente",
+    "Imposibilidad material de cumplir la medida",
+    "Otro",
+  ];
+
+  if (validValues.includes(cleanValue)) {
+    return cleanValue;
+  }
+
+  const aliases = {
+    cumplimiento_plan: "Cumplimiento del plan de restitución",
+    cumplimiento_plan_restitucion: "Cumplimiento del plan de restitución",
+    reintegracion_familiar: "Reintegración familiar",
+    canalizacion_autoridad: "Canalización a autoridad competente",
+    canalizacion_autoridad_competente: "Canalización a autoridad competente",
+    imposibilidad_material: "Imposibilidad material de cumplir la medida",
+    imposibilidad_material_cumplir_medida:
+      "Imposibilidad material de cumplir la medida",
+    otro: "Otro",
+  };
+
+  return aliases[cleanValue] || "";
+}
+
+
+
+function normalizeLugarIntervencionFromRegistro(value) {
+  const cleanValue = toFormString(value);
+
+  const validValues = [
+    "",
+    "Procuraduría de Protección",
+    "Centro de asistencia social",
+    "Institución educativa",
+    "Institución de salud",
+    "Ministerio Público / Fiscalía",
+    "Domicilio particular",
+    "Otras",
+  ];
+
+  if (validValues.includes(cleanValue)) {
+    return cleanValue;
+  }
+
+  const aliases = {
+    procuraduria: "Procuraduría de Protección",
+    procuraduria_proteccion: "Procuraduría de Protección",
+    centro_asistencia_social: "Centro de asistencia social",
+    cas: "Centro de asistencia social",
+    institucion_educativa: "Institución educativa",
+    escuela: "Institución educativa",
+    institucion_salud: "Institución de salud",
+    hospital: "Institución de salud",
+    ministerio_publico: "Ministerio Público / Fiscalía",
+    fiscalia: "Ministerio Público / Fiscalía",
+    domicilio: "Domicilio particular",
+    domicilio_particular: "Domicilio particular",
+  };
+
+  return aliases[cleanValue] || "Otras";
+}
+
+function normalizeOtroLugarIntervencionFromRegistro({
+  lugarIntervencion,
+  otroLugarIntervencion,
+}) {
+  const cleanOtroLugar = toFormString(otroLugarIntervencion);
+
+  if (cleanOtroLugar) {
+    return cleanOtroLugar;
+  }
+
+  const cleanLugar = toFormString(lugarIntervencion);
+
+  const validValues = [
+    "",
+    "Procuraduría de Protección",
+    "Centro de asistencia social",
+    "Institución educativa",
+    "Institución de salud",
+    "Ministerio Público / Fiscalía",
+    "Domicilio particular",
+    "Otras",
+  ];
+
+  if (!cleanLugar || validValues.includes(cleanLugar)) {
+    return "";
+  }
+
+  const labels = {
+    aeropuerto_aicm: "AEROPUERTO AICM",
+    aeropuerto: "AEROPUERTO",
+  };
+
+  return labels[cleanLugar] || cleanLugar.replace(/_/g, " ").toUpperCase();
+}
+
+function normalizeEgresoNoPlanificadoFromRegistro(value) {
+  const cleanValue = toFormString(value);
+
+  const validValues = [
+    "",
+    "Abandono voluntario",
+    "Continuó ruta migratoria",
+    "No localización",
+    "Retiro por familiar o tercero",
+    "Otro",
+  ];
+
+  if (validValues.includes(cleanValue)) {
+    return cleanValue;
+  }
+
+  const aliases = {
+    abandono_voluntario: "Abandono voluntario",
+    nna_continuo_caravana: "Continuó ruta migratoria",
+    continuo_caravana: "Continuó ruta migratoria",
+    continuo_ruta_migratoria: "Continuó ruta migratoria",
+    continuo_ruta: "Continuó ruta migratoria",
+    no_localizacion: "No localización",
+    no_localizado: "No localización",
+    retiro_familiar: "Retiro por familiar o tercero",
+    retiro_por_familiar: "Retiro por familiar o tercero",
+    retiro_familiar_tercero: "Retiro por familiar o tercero",
+    otro: "Otro",
+  };
+
+  return aliases[cleanValue] || "";
+}
+
+
+
+function normalizeIdiomaFromRegistro(value) {
+  const cleanValue = toFormString(value).trim();
+
+  const aliases = {
+    español: "ESPAÑOL",
+    espanol: "ESPAÑOL",
+    ESPAÑOL: "ESPAÑOL",
+    ESPANOL: "ESPAÑOL",
+    inglés: "INGLÉS",
+    ingles: "INGLÉS",
+    INGLÉS: "INGLÉS",
+    INGLES: "INGLÉS",
+    francés: "FRANCÉS",
+    frances: "FRANCÉS",
+    FRANCÉS: "FRANCÉS",
+    FRANCES: "FRANCÉS",
+    portugués: "PORTUGUÉS",
+    portugues: "PORTUGUÉS",
+    PORTUGUÉS: "PORTUGUÉS",
+    PORTUGUES: "PORTUGUÉS",
+    lengua_indigena: "LENGUA INDÍGENA",
+    "Lengua indígena": "LENGUA INDÍGENA",
+    "LENGUA INDÍGENA": "LENGUA INDÍGENA",
+    otro: "OTRO",
+    Otro: "OTRO",
+    OTRO: "OTRO",
+    desconocido: "SE DESCONOCE",
+    desconocida: "SE DESCONOCE",
+    se_desconoce: "SE DESCONOCE",
+    "Se desconoce": "SE DESCONOCE",
+    "SE DESCONOCE": "SE DESCONOCE",
+  };
+
+  return aliases[cleanValue] || "";
+}
+
+function normalizeEntidadFederativaTextFromRegistro(value) {
+  const cleanValue = toFormString(value).trim();
+
+  const aliases = {
+    aguascalientes: "Aguascalientes",
+    baja_california: "Baja California",
+    "baja california": "Baja California",
+    baja_california_sur: "Baja California Sur",
+    "baja california sur": "Baja California Sur",
+    campeche: "Campeche",
+    coahuila: "Coahuila",
+    colima: "Colima",
+    chiapas: "Chiapas",
+    chihuahua: "Chihuahua",
+    ciudad_de_mexico: "Ciudad de México",
+    "ciudad de mexico": "Ciudad de México",
+    "ciudad de méxico": "Ciudad de México",
+    cdmx: "Ciudad de México",
+    durango: "Durango",
+    guanajuato: "Guanajuato",
+    guerrero: "Guerrero",
+    hidalgo: "Hidalgo",
+    jalisco: "Jalisco",
+    estado_de_mexico: "Estado de México",
+    "estado de mexico": "Estado de México",
+    "estado de méxico": "Estado de México",
+    mexico: "Estado de México",
+    méxico: "Estado de México",
+    michoacan: "Michoacán",
+    michoacán: "Michoacán",
+    morelos: "Morelos",
+    nayarit: "Nayarit",
+    nuevo_leon: "Nuevo León",
+    "nuevo leon": "Nuevo León",
+    "nuevo león": "Nuevo León",
+    oaxaca: "Oaxaca",
+    puebla: "Puebla",
+    queretaro: "Querétaro",
+    querétaro: "Querétaro",
+    quintana_roo: "Quintana Roo",
+    "quintana roo": "Quintana Roo",
+    san_luis_potosi: "San Luis Potosí",
+    "san luis potosi": "San Luis Potosí",
+    "san luis potosí": "San Luis Potosí",
+    sinaloa: "Sinaloa",
+    sonora: "Sonora",
+    tabasco: "Tabasco",
+    tamaulipas: "Tamaulipas",
+    tlaxcala: "Tlaxcala",
+    veracruz: "Veracruz",
+    yucatan: "Yucatán",
+    yucatán: "Yucatán",
+    zacatecas: "Zacatecas",
+  };
+
+  return aliases[cleanValue] || cleanValue;
+}
+
+
 function buildDiscapacidadesFormFromRegistro({ registro, nna, datosGenerales }) {
   const discapacidades = normalizeRegistroList(
     getFirstDefined(
@@ -1472,11 +1823,16 @@ export function buildMedidasCreateFormsFromRegistro(registro = {}) {
 
       region_origen: toFormString(datosGenerales.region_origen),
       pais_residencia: toFormString(datosGenerales.pais_residencia),
-      documento_identificacion: toFormString(
+      documento_identificacion: normalizeDocumentoIdentificacionFromRegistro(
         datosGenerales.documento_identificacion
       ),
-      tipo_identificacion: toFormString(datosGenerales.tipo_identificacion),
-      calidad_migratoria: toFormString(datosGenerales.calidad_migratoria),
+      tipo_identificacion: normalizeTipoIdentificacionFromRegistro({
+        documentoIdentificacion: datosGenerales.documento_identificacion,
+        tipoIdentificacion: datosGenerales.tipo_identificacion,
+      }),
+      calidad_migratoria: normalizeCalidadMigratoriaFromRegistro(
+        datosGenerales.calidad_migratoria
+      ),
       acompanado: toFormString(datosGenerales.acompanado),
       parentesco_acompanante: toFormString(
         datosGenerales.parentesco_acompanante
@@ -1490,7 +1846,7 @@ export function buildMedidasCreateFormsFromRegistro(registro = {}) {
       ),
       tipo_enfermedad: toFormString(impresionDiagnostica.tipo_enfermedad),
       religion: toFormString(impresionDiagnostica.religion),
-      idioma: toFormString(impresionDiagnostica.idioma),
+      idioma: normalizeIdiomaFromRegistro(impresionDiagnostica.idioma),
       habla_lengua_indigena: toSiNoFormValue(
         impresionDiagnostica.habla_lengua_indigena
       ),
@@ -1502,11 +1858,14 @@ export function buildMedidasCreateFormsFromRegistro(registro = {}) {
     intervencion_multidisciplinaria: {
       ...initialForms.intervencion_multidisciplinaria,
       actor_derivacion: toFormString(intervencion.actor_derivacion),
-      lugar_intervencion: toFormString(intervencion.lugar_intervencion),
-      otro_lugar_intervencion: toFormString(
-        intervencion.otro_lugar_intervencion
+      lugar_intervencion: normalizeLugarIntervencionFromRegistro(
+        intervencion.lugar_intervencion
       ),
-      entidad_federativa_conocimiento: toFormString(
+      otro_lugar_intervencion: normalizeOtroLugarIntervencionFromRegistro({
+        lugarIntervencion: intervencion.lugar_intervencion,
+        otroLugarIntervencion: intervencion.otro_lugar_intervencion,
+      }),
+      entidad_federativa_conocimiento: normalizeEntidadFederativaTextFromRegistro(
         intervencion.entidad_federativa_conocimiento
       ),
       lugar_realizacion_intervencion: toFormString(
@@ -1557,16 +1916,20 @@ export function buildMedidasCreateFormsFromRegistro(registro = {}) {
 
     cierre_caso: {
       ...initialForms.cierre_caso,
-      tipo_egreso: toFormString(cierreCaso.tipo_egreso),
+      tipo_egreso: normalizeTipoEgresoFromRegistro(cierreCaso.tipo_egreso),
       egreso_planificado: toFormString(cierreCaso.egreso_planificado),
-      egreso_no_planificado: toFormString(cierreCaso.egreso_no_planificado),
+      egreso_no_planificado: normalizeEgresoNoPlanificadoFromRegistro(
+        cierreCaso.egreso_no_planificado
+      ),
       fecha_egreso: toFormDate(cierreCaso.fecha_egreso),
       descripcion_egreso: toFormString(cierreCaso.descripcion_egreso),
       determinacion_interes_superior: toFormString(
         cierreCaso.determinacion_interes_superior
       ),
       existe_cierre_caso: toSiNoFormValue(cierreCaso.existe_cierre_caso),
-      razon_cierre_caso: toFormString(cierreCaso.razon_cierre_caso),
+      razon_cierre_caso: normalizeRazonCierreCasoFromRegistro(
+        cierreCaso.razon_cierre_caso
+      ),
       descripcion_cierre_imposibilidad: toFormString(
         cierreCaso.descripcion_cierre_imposibilidad
       ),

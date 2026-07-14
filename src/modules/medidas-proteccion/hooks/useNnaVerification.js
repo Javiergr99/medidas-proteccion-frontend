@@ -50,12 +50,34 @@ export function useNnaVerification() {
       };
     } catch (error) {
       const status = error?.response?.status;
+      const responseData = error?.response?.data || {};
       const message = getErrorMessage(
         error,
         "No fue posible verificar la existencia del NNA."
       );
 
       if (status === 409) {
+        const isExistingMpRecord =
+          responseData?.code === "NNA_ALREADY_IN_MP" &&
+          Boolean(responseData?.registro_id);
+
+        /*
+         * Cuando el NNA ya tiene expediente MP, no pintamos el estado
+         * bloqueado. MedidasCreatePage recibirá el UUID y redirigirá
+         * directamente al expediente existente.
+         */
+        if (isExistingMpRecord) {
+          return {
+            ok: false,
+            blocked: false,
+            existingMpRecord: true,
+            error,
+            response: responseData,
+            status,
+            message,
+          };
+        }
+
         setState({
           ...INITIAL_STATE,
           status: NNA_VERIFICATION_STATUS.BLOCKED,
@@ -66,7 +88,11 @@ export function useNnaVerification() {
         return {
           ok: false,
           blocked: true,
+          existingMpRecord: false,
           error,
+          response: responseData,
+          status,
+          message,
         };
       }
 
@@ -81,6 +107,9 @@ export function useNnaVerification() {
         ok: false,
         blocked: false,
         error,
+        response: responseData,
+        status,
+        message,
       };
     }
   }, []);
