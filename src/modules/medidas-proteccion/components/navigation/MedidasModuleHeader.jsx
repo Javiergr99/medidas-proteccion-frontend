@@ -22,7 +22,7 @@ import ViewListRoundedIcon from "@mui/icons-material/ViewListRounded";
 
 import MedidasMobileDrawer from "./MedidasMobileDrawer";
 
-import logoPfpnna from "../../../../assets/icons/Logo_PFPNNA.webp";
+import logoPfpnna from "../../../../assets/icons/SNDIF.png";
 import perfilIcon from "../../../../assets/icons/perfil.webp";
 
 const NAV_ITEMS = [
